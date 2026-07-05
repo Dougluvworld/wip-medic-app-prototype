@@ -43,7 +43,6 @@ const conditionsBySymptom: Record<string, { name: string; confidence: number; bl
   ],
 };
 
-export default Results;
 function Results() {
   const a = useAssessment();
   const urgency = computeUrgency(a.severity, a.additional);
