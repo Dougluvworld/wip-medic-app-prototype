@@ -19,53 +19,148 @@ export const Route = createFileRoute("/assess")({
 
 type Msg = { id: string; role: "assistant" | "user"; text: string };
 
+type FieldKey = "mainSymptom" | "bodyArea" | "duration" | "severity" | "additional";
+
 type Step = {
-  prompt: string;
+  key: FieldKey;
+  prompt: (state: ReturnType<typeof assessmentStore.get>) => string;
   apply: (raw: string) => void;
   voiceSample: string;
 };
 
+// Map keywords in free-text to a canonical body area
+const BODY_MAP: Array<{ re: RegExp; area: string }> = [
+  { re: /stomach|belly|tummy|abdom|gut/i, area: "Abdomen" },
+  { re: /chest|heart/i, area: "Chest" },
+  { re: /throat|swallow/i, area: "Throat" },
+  { re: /head|forehead|temple|migraine/i, area: "Head" },
+  { re: /back|spine|lower back/i, area: "Back" },
+  { re: /leg|knee|ankle|foot|feet|thigh/i, area: "Legs" },
+  { re: /arm|shoulder|elbow|wrist|hand/i, area: "Arms" },
+  { re: /skin|rash/i, area: "Skin" },
+  { re: /ear/i, area: "Ear" },
+  { re: /eye|vision/i, area: "Eye" },
+];
+
+const DURATION_RES: RegExp[] = [
+  /\b(?:since|for)\s+(?:the\s+)?(?:last\s+)?([a-z0-9\-\s]+?)(?=[.,]|$)/i,
+  /\b(a\s+few|several|couple of|about)?\s*\d+\s*(?:hour|hr|day|week|month|year)s?\s*(?:now|ago)?/i,
+  /\b(yesterday|today|this morning|last night|last week)\b/i,
+];
+
+function detectBodyArea(text: string): string | null {
+  for (const { re, area } of BODY_MAP) if (re.test(text)) return area;
+  return null;
+}
+
+function detectDuration(text: string): string | null {
+  for (const re of DURATION_RES) {
+    const m = text.match(re);
+    if (m) return m[0].replace(/^\s*(since|for)\s+/i, "").trim();
+  }
+  return null;
+}
+
+function detectSeverity(text: string): number | null {
+  const m = text.match(/\b(\d{1,2})\s*(?:\/|out of)\s*10\b/i) || text.match(/\b(?:around|about)?\s*(\d{1,2})\b/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (isNaN(n) || n < 1 || n > 10) return null;
+  return n;
+}
+
+// Run every free-text answer through here to opportunistically fill later fields
+function autofill(text: string) {
+  const s = assessmentStore.get();
+  const patch: Partial<ReturnType<typeof assessmentStore.get>> = {};
+  if (!s.bodyArea) {
+    const area = detectBodyArea(text);
+    if (area) patch.bodyArea = area;
+  }
+  if (!s.duration) {
+    const dur = detectDuration(text);
+    if (dur) patch.duration = dur;
+  }
+  if (Object.keys(patch).length) assessmentStore.set(patch);
+}
+
 const steps: Step[] = [
   {
-    prompt:
-      "Hi 👋 I'm Medi. Tell me what's been bothering you — describe it in your own words.",
-    apply: (raw) =>
-      assessmentStore.set({ mainSymptom: raw.split(/[.,\n]/)[0].slice(0, 60).trim() || raw.slice(0, 60) }),
+    key: "mainSymptom",
+    prompt: () => "Hi 👋 I'm Medi. Tell me what's been bothering you — describe it in your own words.",
+    apply: (raw) => {
+      assessmentStore.set({
+        mainSymptom: raw.split(/[.,\n]/)[0].slice(0, 60).trim() || raw.slice(0, 60),
+      });
+      autofill(raw);
+    },
     voiceSample: "I've had a sore throat and a mild headache since yesterday",
   },
   {
-    prompt: "Thanks for sharing. Where in your body are you feeling this most?",
-    apply: (raw) => assessmentStore.set({ bodyArea: raw.slice(0, 40).trim() }),
+    key: "bodyArea",
+    prompt: () => "Thanks. Where in your body are you feeling this most?",
+    apply: (raw) => {
+      const detected = detectBodyArea(raw) ?? raw.slice(0, 40).trim();
+      assessmentStore.set({ bodyArea: detected });
+      autofill(raw);
+    },
     voiceSample: "Mostly in my throat and forehead",
   },
   {
-    prompt: "Got it. How long has this been going on?",
-    apply: (raw) => assessmentStore.set({ duration: raw.slice(0, 40).trim() }),
+    key: "duration",
+    prompt: (s) =>
+      s.bodyArea
+        ? `Got it — ${s.bodyArea.toLowerCase()}. How long has this been going on?`
+        : "Got it. How long has this been going on?",
+    apply: (raw) => {
+      const d = detectDuration(raw) ?? raw.slice(0, 40).trim();
+      assessmentStore.set({ duration: d });
+    },
     voiceSample: "About 2 days now",
   },
   {
-    prompt: "On a scale of 1 to 10, how bad does it feel right now?",
+    key: "severity",
+    prompt: () => "On a scale of 1 to 10, how bad does it feel right now?",
     apply: (raw) => {
-      const n = parseInt(raw.replace(/[^0-9]/g, ""), 10);
-      assessmentStore.set({ severity: Math.min(10, Math.max(1, isNaN(n) ? 5 : n)) });
+      const n = detectSeverity(raw);
+      assessmentStore.set({ severity: n ?? 5 });
     },
     voiceSample: "I'd say around a 6",
   },
   {
-    prompt:
-      "Last one — anything else you've noticed? Fever, nausea, fatigue, chills… or nothing else.",
+    key: "additional",
+    prompt: () =>
+      "Last one — anything else you've noticed? Fever, nausea, fatigue, chills… or say 'nothing'.",
     apply: (raw) => {
       const list = raw
         .toLowerCase()
         .split(/,| and |\n/)
         .map((s) => s.trim())
-        .filter((s) => s && s !== "nothing" && s !== "no" && s.length < 30)
+        .filter((s) => s && s !== "nothing" && s !== "no" && s !== "none" && s.length < 30)
         .map((s) => s[0].toUpperCase() + s.slice(1));
       assessmentStore.set({ additional: list.slice(0, 6) });
     },
     voiceSample: "A bit of fever and fatigue",
   },
 ];
+
+function isAnswered(key: FieldKey, s: ReturnType<typeof assessmentStore.get>): boolean {
+  switch (key) {
+    case "mainSymptom": return !!s.mainSymptom;
+    case "bodyArea": return !!s.bodyArea;
+    case "duration": return !!s.duration;
+    // severity has a default (4) — always ask; additional is optional but always ask once
+    default: return false;
+  }
+}
+
+function nextUnansweredIdx(from: number): number {
+  const s = assessmentStore.get();
+  for (let i = from; i < steps.length; i++) {
+    if (!isAnswered(steps[i].key, s)) return i;
+  }
+  return steps.length;
+}
 
 function Assess() {
   const nav = useNavigate();
@@ -88,9 +183,10 @@ function Assess() {
     if (stepIdx >= steps.length) return;
     setTyping(true);
     const t = setTimeout(() => {
+      const s = assessmentStore.get();
       setMessages((m) => [
         ...m,
-        { id: `a-${stepIdx}-${Date.now()}`, role: "assistant", text: steps[stepIdx].prompt },
+        { id: `a-${stepIdx}-${Date.now()}`, role: "assistant", text: steps[stepIdx].prompt(s) },
       ]);
       setTyping(false);
       taRef.current?.focus();
@@ -103,6 +199,19 @@ function Assess() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, typing, done]);
 
+  const finish = () => {
+    setTyping(true);
+    setTimeout(() => {
+      const a = assessmentStore.get();
+      const recap = `Here's what I've got:\n\n• Symptom: ${a.mainSymptom ?? "—"}\n• Area: ${a.bodyArea ?? "—"}\n• Duration: ${a.duration ?? "—"}\n• Severity: ${a.severity}/10${
+        a.additional.length ? `\n• Other: ${a.additional.join(", ")}` : ""
+      }\n\nReady to see what this might mean?`;
+      setMessages((m) => [...m, { id: `a-recap-${Date.now()}`, role: "assistant", text: recap }]);
+      setTyping(false);
+      setDone(true);
+    }, 700);
+  };
+
   const submit = (raw: string) => {
     const text = raw.trim();
     if (!text || done) return;
@@ -110,20 +219,37 @@ function Assess() {
     steps[stepIdx].apply(text);
     setInput("");
 
-    if (stepIdx + 1 >= steps.length) {
-      // Show recap
+    // Acknowledge auto-filled fields (e.g. "Got it — abdomen, since yesterday.")
+    const s = assessmentStore.get();
+    const acks: string[] = [];
+    if (stepIdx === 0) {
+      if (s.bodyArea) acks.push(s.bodyArea.toLowerCase());
+      if (s.duration) acks.push(s.duration);
+    }
+    const nextIdx = nextUnansweredIdx(stepIdx + 1);
+
+    if (acks.length && nextIdx < steps.length) {
+      // Insert a short assistant ack before the next question
       setTyping(true);
       setTimeout(() => {
-        const a = assessmentStore.get();
-        const recap = `Here's what I've got:\n\n• Symptom: ${a.mainSymptom ?? "—"}\n• Area: ${a.bodyArea ?? "—"}\n• Duration: ${a.duration ?? "—"}\n• Severity: ${a.severity}/10${
-          a.additional.length ? `\n• Other: ${a.additional.join(", ")}` : ""
-        }\n\nReady to see what this might mean?`;
-        setMessages((m) => [...m, { id: `a-recap-${Date.now()}`, role: "assistant", text: recap }]);
+        setMessages((m) => [
+          ...m,
+          {
+            id: `a-ack-${Date.now()}`,
+            role: "assistant",
+            text: `Noted — ${acks.join(", ")}.`,
+          },
+        ]);
         setTyping(false);
-        setDone(true);
-      }, 700);
+        setStepIdx(nextIdx);
+      }, 500);
+      return;
+    }
+
+    if (nextIdx >= steps.length) {
+      finish();
     } else {
-      setStepIdx((i) => i + 1);
+      setStepIdx(nextIdx);
     }
   };
 
@@ -138,6 +264,7 @@ function Assess() {
     setTimeout(() => {
       setInput(steps[stepIdx].voiceSample);
       setListening(false);
+
       taRef.current?.focus();
     }, 1400);
   };
