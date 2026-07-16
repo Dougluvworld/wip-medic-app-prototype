@@ -2,9 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { TravelBanner } from "@/components/TravelBanner";
 import { providers, type Provider } from "@/lib/mock-data";
+import { useTravelState } from "@/lib/travel-mode";
+import { careLabel } from "@/lib/care-labels";
 import { Clock, MapPin, Navigation, Star } from "lucide-react";
 import { useState, useEffect } from "react";
+
 
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
 type Filter = (typeof filters)[number];
