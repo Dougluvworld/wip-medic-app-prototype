@@ -12,46 +12,99 @@ export const Route = createFileRoute("/results")({
   component: Results,
 });
 
-function computeUrgency(severity: number, additional: string[]) {
-  const critical = additional.some((s) => ["Chest pain", "Shortness of breath"].includes(s));
+function computeUrgency(severity: number, additional: string[], mainSymptom: string | null) {
+  const hay = `${mainSymptom ?? ""} ${additional.join(" ")}`.toLowerCase();
+  const critical =
+    /chest pain|shortness of breath|can'?t breathe|difficulty breathing|numb|slurred|severe bleeding/.test(
+      hay,
+    );
   if (critical || severity >= 8) return "High" as const;
   if (severity >= 5) return "Medium" as const;
   return "Low" as const;
 }
 
-const conditionsBySymptom: Record<string, { name: string; confidence: number; blurb: string }[]> = {
-  Headache: [
+type Condition = { name: string; confidence: number; blurb: string };
+
+const conditionsBySymptom: Record<string, Condition[]> = {
+  headache: [
     { name: "Tension headache", confidence: 72, blurb: "Common, usually from stress or fatigue." },
     { name: "Migraine", confidence: 41, blurb: "Throbbing pain, often one-sided." },
     { name: "Dehydration", confidence: 28, blurb: "Insufficient fluid intake." },
   ],
-  Fever: [
+  fever: [
     { name: "Viral infection", confidence: 68, blurb: "Often accompanies common colds and flu." },
     { name: "Bacterial infection", confidence: 34, blurb: "May require antibiotics." },
   ],
-  Cough: [
+  cough: [
     { name: "Upper respiratory infection", confidence: 65, blurb: "Common viral illness." },
     { name: "Post-nasal drip", confidence: 38, blurb: "Mucus from the nose to the throat." },
   ],
-  "Sore throat": [
+  "sore throat": [
     { name: "Viral pharyngitis", confidence: 74, blurb: "Most common cause of sore throat." },
     { name: "Strep throat", confidence: 22, blurb: "Bacterial — may need swab testing." },
   ],
-  "Chest pain": [
+  throat: [
+    { name: "Viral pharyngitis", confidence: 70, blurb: "Most common cause of throat discomfort." },
+    { name: "Laryngitis", confidence: 30, blurb: "Inflammation of the voice box." },
+  ],
+  "chest pain": [
     { name: "Musculoskeletal pain", confidence: 44, blurb: "Often from strain or posture." },
     { name: "Cardiac cause", confidence: 32, blurb: "Requires urgent medical evaluation." },
   ],
+  stomach: [
+    { name: "Indigestion", confidence: 62, blurb: "Often related to food or stress." },
+    { name: "Gastroenteritis", confidence: 34, blurb: "Stomach bug, usually short-lived." },
+  ],
+  abdominal: [
+    { name: "Indigestion", confidence: 60, blurb: "Common cause of abdominal discomfort." },
+    { name: "Gastroenteritis", confidence: 36, blurb: "Stomach bug, usually short-lived." },
+  ],
+  nausea: [
+    { name: "Gastroenteritis", confidence: 58, blurb: "Stomach bug, usually short-lived." },
+    { name: "Food intolerance", confidence: 30, blurb: "Reaction to something recently eaten." },
+  ],
+  back: [
+    { name: "Muscle strain", confidence: 68, blurb: "Common back pain cause." },
+    { name: "Poor posture", confidence: 40, blurb: "Prolonged sitting or lifting." },
+  ],
+  rash: [
+    { name: "Contact dermatitis", confidence: 55, blurb: "Skin reaction to an irritant." },
+    { name: "Allergic reaction", confidence: 38, blurb: "Response to an allergen." },
+  ],
+  dizzy: [
+    { name: "Dehydration", confidence: 52, blurb: "Common cause of light-headedness." },
+    { name: "Inner-ear disturbance", confidence: 34, blurb: "Balance-related dizziness." },
+  ],
+  fatigue: [
+    { name: "Viral illness", confidence: 58, blurb: "Often accompanies infections." },
+    { name: "Sleep deficit", confidence: 42, blurb: "Insufficient or poor-quality sleep." },
+  ],
 };
 
-function Results() {
-  const a = useAssessment();
-  const urgency = computeUrgency(a.severity, a.additional);
-  const list = a.mainSymptom && conditionsBySymptom[a.mainSymptom]
-    ? conditionsBySymptom[a.mainSymptom]
+function matchConditions(mainSymptom: string | null, additional: string[]): Condition[] {
+  const hay = `${mainSymptom ?? ""} ${additional.join(" ")}`.toLowerCase();
+  const matched = new Map<string, Condition>();
+  for (const key of Object.keys(conditionsBySymptom)) {
+    if (hay.includes(key)) {
+      for (const c of conditionsBySymptom[key]) {
+        const prev = matched.get(c.name);
+        if (!prev || prev.confidence < c.confidence) matched.set(c.name, c);
+      }
+    }
+  }
+  const list = Array.from(matched.values()).sort((a, b) => b.confidence - a.confidence);
+  return list.length > 0
+    ? list.slice(0, 4)
     : [
         { name: "Non-specific viral illness", confidence: 58, blurb: "Common self-limiting condition." },
         { name: "Musculoskeletal cause", confidence: 32, blurb: "Related to physical strain." },
       ];
+}
+
+function Results() {
+  const a = useAssessment();
+  const urgency = computeUrgency(a.severity, a.additional, a.mainSymptom);
+  const list = matchConditions(a.mainSymptom, a.additional);
 
   const urgencyMap = {
     Low: {
