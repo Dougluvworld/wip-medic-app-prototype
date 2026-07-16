@@ -3,7 +3,9 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAssessment } from "@/lib/assessment-store";
-import { AlertTriangle, ChevronRight, Info, Sparkles } from "lucide-react";
+import { useEmergencyInfo } from "@/lib/locale";
+import { AlertTriangle, ChevronRight, Info, Phone, Sparkles } from "lucide-react";
+
 
 export const Route = createFileRoute("/results")({
   head: () => ({
