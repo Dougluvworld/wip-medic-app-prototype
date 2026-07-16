@@ -108,10 +108,7 @@ const steps: Step[] = [
   },
   {
     key: "duration",
-    prompt: (s) =>
-      s.bodyArea
-        ? `Got it — ${s.bodyArea.toLowerCase()}. How long has this been going on?`
-        : "Got it. How long has this been going on?",
+    prompt: () => "How long has this been going on?",
     apply: (raw) => {
       const d = detectDuration(raw) ?? raw.slice(0, 40).trim();
       assessmentStore.set({ duration: d });
@@ -219,32 +216,9 @@ function Assess() {
     steps[stepIdx].apply(text);
     setInput("");
 
-    // Acknowledge auto-filled fields (e.g. "Got it — abdomen, since yesterday.")
-    const s = assessmentStore.get();
-    const acks: string[] = [];
-    if (stepIdx === 0) {
-      if (s.bodyArea) acks.push(s.bodyArea.toLowerCase());
-      if (s.duration) acks.push(s.duration);
-    }
+    // Auto-filled fields (body area, duration) are captured silently —
+    // skip straight to the next unanswered question without echoing them back.
     const nextIdx = nextUnansweredIdx(stepIdx + 1);
-
-    if (acks.length && nextIdx < steps.length) {
-      // Insert a short assistant ack before the next question
-      setTyping(true);
-      setTimeout(() => {
-        setMessages((m) => [
-          ...m,
-          {
-            id: `a-ack-${Date.now()}`,
-            role: "assistant",
-            text: `Noted — ${acks.join(", ")}.`,
-          },
-        ]);
-        setTyping(false);
-        setStepIdx(nextIdx);
-      }, 500);
-      return;
-    }
 
     if (nextIdx >= steps.length) {
       finish();
