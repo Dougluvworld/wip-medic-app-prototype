@@ -2,9 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
+import { TravelBanner } from "@/components/TravelBanner";
 import { recentAssessments } from "@/lib/mock-data";
-import { useEmergencyInfo } from "@/lib/locale";
+import { getEmergencyInfo } from "@/lib/locale";
+import { useTravelState } from "@/lib/travel-mode";
 import { Settings, AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/home")({
