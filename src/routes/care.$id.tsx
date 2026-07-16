@@ -200,7 +200,7 @@ function ProviderDetail() {
 
             {p.reviewList && p.reviewList.length > 0 && (
               <div className="mt-4 space-y-3">
-                {p.reviewList.map((r) => (
+                {p.reviewList.map((r: import("@/lib/mock-data").Review) => (
                   <ReviewCard key={r.id} review={r} />
                 ))}
                 <button className="w-full rounded-xl border border-border py-2 text-xs font-semibold text-foreground/80 hover:bg-accent">
