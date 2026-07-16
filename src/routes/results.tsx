@@ -107,16 +107,17 @@ function Results() {
   const a = useAssessment();
   const urgency = computeUrgency(a.severity, a.additional, a.mainSymptom);
   const list = matchConditions(a.mainSymptom, a.additional);
+  const emergency = useEmergencyInfo();
 
   const urgencyMap = {
     Low: {
       label: "Low urgency",
       tone: "bg-success/15 text-success border-success/30",
       ring: "from-success/60 to-success/30",
-      next: "Self-care & monitor",
+      next: "Self-care & speak to a pharmacist",
       nextBody: "Rest, hydration and over-the-counter relief should help. See a pharmacist if symptoms persist beyond 3 days.",
-      cta: "Find a pharmacy",
-      to: "/care" as const,
+      cta: "Show pharmacies near me",
+      careType: "Pharmacy" as const,
     },
     Medium: {
       label: "Medium urgency",
@@ -124,19 +125,20 @@ function Results() {
       ring: "from-warning/70 to-warning/30",
       next: "Book a GP appointment",
       nextBody: "We recommend seeing your GP within 24–48 hours for a proper evaluation.",
-      cta: "Find a GP",
-      to: "/care" as const,
+      cta: "Show GPs near me",
+      careType: "GP" as const,
     },
     High: {
       label: "High urgency",
       tone: "bg-destructive/15 text-destructive border-destructive/30",
       ring: "from-destructive/70 to-destructive/30",
       next: "Seek urgent care now",
-      nextBody: "Go to an Urgent Treatment Centre or A&E. If severe, call 999 immediately.",
-      cta: "Find urgent care",
-      to: "/care" as const,
+      nextBody: `Go to an Urgent Treatment Centre or A&E. If severe, call ${emergency.number} immediately.`,
+      cta: "Show urgent care near me",
+      careType: "Urgent Care" as const,
     },
   }[urgency];
+
 
   return (
     <PhoneFrame>
