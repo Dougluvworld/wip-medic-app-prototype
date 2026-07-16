@@ -60,9 +60,9 @@ const CareIndexRoute = CareIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const CareIdRoute = CareIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CareRoute,
+  id: '/care/$id',
+  path: '/care/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -143,6 +143,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
   SettingsRoute: typeof SettingsRoute
+  CareIdRoute: typeof CareIdRoute
   CareIndexRoute: typeof CareIndexRoute
 }
 
@@ -206,10 +207,10 @@ declare module '@tanstack/react-router' {
     }
     '/care/$id': {
       id: '/care/$id'
-      path: '/$id'
+      path: '/care/$id'
       fullPath: '/care/$id'
       preLoaderRoute: typeof CareIdRouteImport
-      parentRoute: typeof CareRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -222,18 +223,9 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
   SettingsRoute: SettingsRoute,
+  CareIdRoute: CareIdRoute,
   CareIndexRoute: CareIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
