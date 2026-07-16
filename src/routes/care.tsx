@@ -96,7 +96,8 @@ function Care() {
                     : "border-border bg-card text-foreground hover:border-primary/40"
                 }`}
               >
-                {f}
+                {filterLabel(f)}
+
               </button>
             ))}
           </div>
