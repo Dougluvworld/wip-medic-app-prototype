@@ -1,3 +1,14 @@
+export type Review = {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  quote: string;
+  verified?: boolean;
+};
+
+export type RatingBreakdown = { 5: number; 4: number; 3: number; 2: number; 1: number };
+
 export type Provider = {
   id: string;
   name: string;
@@ -10,7 +21,40 @@ export type Provider = {
   openNow: boolean;
   address: string;
   phone: string;
+  badges?: string[];
+  reviewList?: Review[];
+  ratingBreakdown?: RatingBreakdown;
+  updatedAgo?: string;
 };
+
+const defaultBreakdown: RatingBreakdown = { 5: 68, 4: 22, 3: 7, 2: 2, 1: 1 };
+
+const sampleReviews = (seed: string): Review[] => [
+  {
+    id: `${seed}-r1`,
+    author: "Aoife M.",
+    rating: 5,
+    date: "3 days ago",
+    quote: "Seen quickly and the pharmacist took real time to explain everything. Felt looked after.",
+    verified: true,
+  },
+  {
+    id: `${seed}-r2`,
+    author: "Cian O.",
+    rating: 4,
+    date: "2 weeks ago",
+    quote: "Friendly staff, clean space. Small wait at peak hours but worth it.",
+    verified: true,
+  },
+  {
+    id: `${seed}-r3`,
+    author: "Niamh K.",
+    rating: 3,
+    date: "1 month ago",
+    quote: "Care was fine, reception could be warmer. Would still return if I needed to.",
+    verified: false,
+  },
+];
 
 export const providers: Provider[] = [
   {
