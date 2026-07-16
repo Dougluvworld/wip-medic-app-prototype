@@ -165,11 +165,18 @@ function Results() {
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
               <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-destructive">If life-threatening, call 999 now.</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Chest pain, difficulty breathing, sudden weakness, severe bleeding.</p>
+                <p className="text-sm font-semibold text-destructive">
+                  If life-threatening, call {emergency.number} now.
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Chest pain, difficulty breathing, sudden weakness, severe bleeding.
+                </p>
               </div>
-              <a href="tel:999" className="rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft">
-                Call 999
+              <a
+                href={`tel:${emergency.number}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft"
+              >
+                <Phone className="h-3 w-3" /> Call {emergency.number}
               </a>
             </div>
           )}
@@ -180,12 +187,14 @@ function Results() {
             <h3 className="mt-1 font-display text-xl font-semibold">{urgencyMap.next}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{urgencyMap.nextBody}</p>
             <Link
-              to={urgencyMap.to}
+              to="/care"
+              search={{ type: urgencyMap.careType }}
               className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft"
             >
               {urgencyMap.cta}
             </Link>
           </div>
+
 
           {/* Possible conditions */}
           <div>
