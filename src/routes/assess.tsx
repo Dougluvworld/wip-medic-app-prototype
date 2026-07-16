@@ -309,7 +309,7 @@ function Assess() {
                 View AI results
               </button>
               <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                Medi provides guidance, not a diagnosis. In an emergency call 999.
+                Medi provides guidance, not a diagnosis. In an emergency call your local emergency number.
               </p>
             </div>
           )}
