@@ -3,7 +3,9 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
 import { recentAssessments } from "@/lib/mock-data";
+import { useEmergencyInfo } from "@/lib/locale";
 import { Settings, AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList } from "lucide-react";
+
 
 export const Route = createFileRoute("/home")({
   head: () => ({
