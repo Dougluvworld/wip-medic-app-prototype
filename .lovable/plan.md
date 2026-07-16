@@ -1,46 +1,50 @@
-
 ## Goal
 
-Make Medi-Care travel-aware. If we detect the user is abroad, offer to switch to travel mode with a dismissible banner. In travel mode, "GP" becomes "Walk-in doctor / local clinic" everywhere, since a personal GP isn't accessible on holiday.
+Make the care detail page (`/care/$id`) feel trustworthy and actionable. Right now it shows a rating number and three action tiles, but no real voices and no obvious "just call them now" moment. We'll add customer feedback and make contact one tap away.
 
-## How detection works
+## Why this builds trust
 
-Two signals, combined:
+Two things matter most when someone is unwell and picking a provider:
+1. **Social proof** — "other people like me had a good experience here"
+2. **Zero friction to act** — the phone number should call, not just display
 
-1. **Home country** — derived from `navigator.language` (e.g. `en-GB` → GB). Same source we already use for the emergency number.
-2. **Current country** — from `navigator.geolocation` → reverse geocode via a free open endpoint (BigDataCloud's `client-ip-country` free tier, no key needed) OR a simple offline lookup on lat/long bounding boxes for the demo. Prototype-only, so we won't over-engineer.
+Everything below serves one of those two.
 
-Rule: if `current !== home` and both are known → suggest travel mode. If geolocation is denied/unavailable → do nothing (no forced ask), user can still flip mode manually from the banner if it ever appears.
+## Changes
 
-State lives in a tiny `useTravelMode()` hook backed by `localStorage` so the choice persists across screens and reloads. Values: `"home" | "away" | "unknown"` + `awayCountry?: string`.
+### 1. One-tap contact (top of page)
 
-## UI changes
+- Promote **Call** to a full-width primary CTA under the hero: `tel:` link, big phone icon, subtitle "Usually answers in under 1 min" (mock).
+- Keep secondary tiles for **Directions** (`https://maps.google.com/?q=<address>`), **Book**, and a new **Message** tile (opens `sms:` on mobile). All native handoffs — no in-app chat to build.
+- Sticky bottom bar changes from "Book appointment" to a two-button row: **Call now** (primary) + **Book** (secondary), so the call action is always reachable while scrolling.
+- Phone-number row becomes a tappable `tel:` link with a subtle "Tap to call" hint.
 
-**Travel banner** (`src/components/TravelBanner.tsx`, new)
-- Appears at the top of `/home`, `/results`, and `/care` when detection returns `away` and the user hasn't dismissed/confirmed yet.
-- Copy: *"Looks like you're in {country}. Show local care instead of your usual GP?"*
-- Buttons: **Yes, I'm travelling** (sets mode=away) · **I'm home** (sets mode=home). Both dismiss the banner.
-- Soft teal card, plane icon (`Plane` from lucide), fade-in.
+### 2. Reviews section (new)
 
-**Terminology swap** — driven by a helper `careLabel(mode)` returning either `"GP"` or `"Walk-in doctor"`:
-- `results.tsx`: Medium-urgency `next` text, CTA button, and `nextBody` swap.
-- `care.tsx`: the "GP" filter chip label. Underlying provider `type` stays `"GP"` (mock data key) so filtering still works — only the display label changes.
-- `mock-data.ts`: no data change; we're only re-labelling.
+- New `Reviews` block below About with:
+  - Rating summary: big score, star row, total review count, and a mini 5→1 star distribution bar.
+  - 2–3 highlighted quote cards (reviewer initial avatar, name, star row, 1–2 sentence quote, relative date, "Verified visit" chip).
+  - "See all reviews" ghost button (non-functional for prototype, or scrolls to a longer list — see below).
+- Add a mock `reviews` array per provider in `src/lib/mock-data.ts` (3 reviews each, realistic Irish/travel-mode-appropriate names, mix of 4–5 star with one honest 3-star to feel real — perfect scores read as fake).
+- Add a `TrustSignals` row above reviews: small chips like "HSE-registered", "Wheelchair accessible", "Accepts walk-ins" — pulled from a new `badges: string[]` field on each provider. Only render chips that exist.
 
-**Emergency number** — already dynamic from locale. When in travel mode, we prefer the *current-country* emergency number instead of the home one (uses same `BY_COUNTRY` map already in `src/lib/locale.ts`).
+### 3. Small polish
+
+- Add a "Last updated 2 days ago" line under hours to signal data freshness.
+- Booked-confirmation card gets a "We'll text you a reminder" line — reinforces the platform actually does something.
 
 ## Files
 
-- **New** `src/lib/travel-mode.ts` — hook + detection (`useTravelMode()`), localStorage persistence, geolocation call.
-- **New** `src/components/TravelBanner.tsx` — the confirm card.
-- **New** `src/lib/care-labels.ts` — `careLabel(mode)` returning `"GP" | "Walk-in doctor"` and a helper for full sentences.
-- **Edit** `src/lib/locale.ts` — export `emergencyForCountry(cc)` so we can pass the current-country code explicitly.
-- **Edit** `src/routes/home.tsx` — render `<TravelBanner />`, use current-country emergency number if in travel mode.
-- **Edit** `src/routes/results.tsx` — render banner, swap "GP" copy via `careLabel`, use travel-aware emergency number.
-- **Edit** `src/routes/care.tsx` — render banner, relabel the "GP" filter chip (value stays `"GP"`).
+- **Edit** `src/lib/mock-data.ts` — add `reviews` and `badges` to each provider; export `Review` type.
+- **Edit** `src/routes/care.$id.tsx` — new sections (primary call CTA, trust chips, reviews block), sticky bar with two buttons, `tel:`/`sms:`/maps links.
+- **New** `src/components/ReviewCard.tsx` — single review card, kept small and reusable.
 
 ## Out of scope
 
-- No real reverse-geocoding vendor / no API keys. Geolocation → simple client-side lookup using timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone` → country hint) as the prototype path; if unavailable, offer manual "I'm travelling" toggle only via the banner when the user opens it themselves. Reliable enough for a demo, zero infra.
-- No embassy links, no travel-insurance card (per your answer, only the GP relabel is in).
-- No new onboarding step — detection is passive.
+- No real review submission, no auth-gated "verified visit" logic — prototype only.
+- No in-app chat/telemedicine — native `tel:`/`sms:` is enough to feel real.
+- No backend; all data stays in `mock-data.ts`.
+
+## Open question
+
+Want me to also add a **"Report incorrect info"** link at the bottom? It's a small trust signal (shows the platform cares about accuracy) but adds a dead-end in the prototype. Happy either way — will skip unless you say yes.
