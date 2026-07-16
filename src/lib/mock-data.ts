@@ -69,6 +69,10 @@ export const providers: Provider[] = [
     openNow: true,
     address: "40 Lower O'Connell Street, Dublin 1, D01 X2P3",
     phone: "+353 1 873 0427",
+    badges: ["HSE-registered", "Accepts walk-ins", "Wheelchair accessible"],
+    reviewList: sampleReviews("boots"),
+    ratingBreakdown: { 5: 74, 4: 18, 3: 5, 2: 2, 1: 1 },
+    updatedAgo: "Updated 2 days ago",
   },
   {
     id: "riverside-gp",
