@@ -164,7 +164,10 @@ function Results() {
           </span>
         } />
 
+        <TravelBanner />
+
         <div className="flex-1 space-y-5 px-5 py-5">
+
           {/* Urgency hero */}
           <div className={`relative overflow-hidden rounded-3xl border p-5 shadow-card animate-scale-in ${urgencyMap.tone}`}>
             <div className={`pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br ${urgencyMap.ring} opacity-40 blur-3xl`} />
