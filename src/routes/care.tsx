@@ -31,7 +31,7 @@ function Care() {
   const travel = useTravelState();
   const list = providers.filter((p) => filter === "All" || p.type === filter);
   const filterLabel = (f: Filter) => (f === "GP" ? careLabel(travel.mode) : f);
-  const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Whitechapel, London";
+  const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Dublin, Ireland";
 
   return (
     <PhoneFrame>

@@ -84,13 +84,13 @@ const COUNTRY_NAME: Record<string, string> = {
 };
 
 function homeCountryFromLocale(): string {
-  if (typeof navigator === "undefined") return "GB";
+  if (typeof navigator === "undefined") return "IE";
   const langs = [navigator.language, ...(navigator.languages ?? [])];
   for (const l of langs) {
     const m = l?.match(/[-_]([A-Z]{2})/i);
     if (m) return m[1].toUpperCase();
   }
-  return "GB";
+  return "IE";
 }
 
 function currentCountryFromTimezone(): string | null {
