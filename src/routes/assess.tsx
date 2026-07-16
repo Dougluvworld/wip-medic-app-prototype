@@ -108,10 +108,7 @@ const steps: Step[] = [
   },
   {
     key: "duration",
-    prompt: (s) =>
-      s.bodyArea
-        ? `Got it — ${s.bodyArea.toLowerCase()}. How long has this been going on?`
-        : "Got it. How long has this been going on?",
+    prompt: () => "How long has this been going on?",
     apply: (raw) => {
       const d = detectDuration(raw) ?? raw.slice(0, 40).trim();
       assessmentStore.set({ duration: d });
