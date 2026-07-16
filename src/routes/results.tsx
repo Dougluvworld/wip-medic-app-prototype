@@ -146,7 +146,7 @@ function Results() {
       tone: "bg-destructive/15 text-destructive border-destructive/30",
       ring: "from-destructive/70 to-destructive/30",
       next: "Seek urgent care now",
-      nextBody: `Go to an Urgent Treatment Centre or A&E. If severe, call ${emergency.number} immediately.`,
+      nextBody: `Go to an Emergency Department or urgent care clinic. If severe, call ${emergency.number} immediately.`,
       cta: "Show urgent care near me",
       careType: "Urgent Care" as const,
     },
