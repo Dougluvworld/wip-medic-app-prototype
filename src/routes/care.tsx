@@ -4,20 +4,29 @@ import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { providers, type Provider } from "@/lib/mock-data";
 import { Clock, MapPin, Navigation, Star } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
+type Filter = (typeof filters)[number];
 
 export const Route = createFileRoute("/care")({
   head: () => ({
     meta: [{ title: "Find Care Nearby — Medi-Care" }, { name: "robots", content: "noindex" }],
   }),
+  validateSearch: (s: Record<string, unknown>): { type?: Filter } => {
+    const t = typeof s.type === "string" ? s.type : undefined;
+    return { type: (filters as readonly string[]).includes(t ?? "") ? (t as Filter) : undefined };
+  },
   component: Care,
 });
 
-const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
-
 function Care() {
-  const [filter, setFilter] = useState<(typeof filters)[number]>("All");
+  const { type } = Route.useSearch();
+  const [filter, setFilter] = useState<Filter>(type ?? "All");
+  // Sync when navigating with a new ?type=
+  useEffect(() => { if (type) setFilter(type); }, [type]);
   const list = providers.filter((p) => filter === "All" || p.type === filter);
+
 
   return (
     <PhoneFrame>
