@@ -2,9 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { TravelBanner } from "@/components/TravelBanner";
 import { useAssessment } from "@/lib/assessment-store";
-import { useEmergencyInfo } from "@/lib/locale";
+import { getEmergencyInfo } from "@/lib/locale";
+import { useTravelState } from "@/lib/travel-mode";
+import { careLabel } from "@/lib/care-labels";
 import { AlertTriangle, ChevronRight, Info, Phone, Sparkles } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/results")({
@@ -107,7 +111,16 @@ function Results() {
   const a = useAssessment();
   const urgency = computeUrgency(a.severity, a.additional, a.mainSymptom);
   const list = matchConditions(a.mainSymptom, a.additional);
-  const emergency = useEmergencyInfo();
+  const travel = useTravelState();
+  const emergency = getEmergencyInfo(
+    travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
+  );
+  const gpShort = careLabel(travel.mode);
+  const gpLong = careLabel(travel.mode, "long");
+  const gpBody =
+    travel.mode === "away"
+      ? `We recommend seeing a walk-in doctor or local clinic${travel.countryName ? ` in ${travel.countryName}` : ""} within 24–48 hours for a proper evaluation.`
+      : "We recommend seeing your GP within 24–48 hours for a proper evaluation.";
 
   const urgencyMap = {
     Low: {
@@ -123,9 +136,9 @@ function Results() {
       label: "Medium urgency",
       tone: "bg-warning/20 text-warning-foreground border-warning/40",
       ring: "from-warning/70 to-warning/30",
-      next: "Book a GP appointment",
-      nextBody: "We recommend seeing your GP within 24–48 hours for a proper evaluation.",
-      cta: "Show GPs near me",
+      next: travel.mode === "away" ? `See a ${gpLong.toLowerCase()}` : "Book a GP appointment",
+      nextBody: gpBody,
+      cta: travel.mode === "away" ? "Show walk-in clinics near me" : "Show GPs near me",
       careType: "GP" as const,
     },
     High: {
@@ -138,6 +151,8 @@ function Results() {
       careType: "Urgent Care" as const,
     },
   }[urgency];
+  void gpShort;
+
 
 
   return (
@@ -149,7 +164,10 @@ function Results() {
           </span>
         } />
 
+        <TravelBanner />
+
         <div className="flex-1 space-y-5 px-5 py-5">
+
           {/* Urgency hero */}
           <div className={`relative overflow-hidden rounded-3xl border p-5 shadow-card animate-scale-in ${urgencyMap.tone}`}>
             <div className={`pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br ${urgencyMap.ring} opacity-40 blur-3xl`} />

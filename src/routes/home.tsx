@@ -2,9 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
+import { TravelBanner } from "@/components/TravelBanner";
 import { recentAssessments } from "@/lib/mock-data";
-import { useEmergencyInfo } from "@/lib/locale";
+import { getEmergencyInfo } from "@/lib/locale";
+import { useTravelState } from "@/lib/travel-mode";
 import { Settings, AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/home")({
@@ -23,7 +26,12 @@ const urgencyColor = {
 function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const emergency = useEmergencyInfo();
+  const travel = useTravelState();
+  const emergency = getEmergencyInfo(
+    travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
+  );
+
+
 
 
   return (
@@ -43,7 +51,10 @@ function Home() {
           </Link>
         </header>
 
+        <TravelBanner />
+
         <div className="flex-1 space-y-5 px-5 py-6">
+
           {/* Emergency banner */}
           <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 animate-fade-in">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive">

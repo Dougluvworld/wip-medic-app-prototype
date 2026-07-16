@@ -2,9 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { TravelBanner } from "@/components/TravelBanner";
 import { providers, type Provider } from "@/lib/mock-data";
+import { useTravelState } from "@/lib/travel-mode";
+import { careLabel } from "@/lib/care-labels";
 import { Clock, MapPin, Navigation, Star } from "lucide-react";
 import { useState, useEffect } from "react";
+
 
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
 type Filter = (typeof filters)[number];
@@ -23,18 +27,22 @@ export const Route = createFileRoute("/care")({
 function Care() {
   const { type } = Route.useSearch();
   const [filter, setFilter] = useState<Filter>(type ?? "All");
-  // Sync when navigating with a new ?type=
   useEffect(() => { if (type) setFilter(type); }, [type]);
+  const travel = useTravelState();
   const list = providers.filter((p) => filter === "All" || p.type === filter);
-
+  const filterLabel = (f: Filter) => (f === "GP" ? careLabel(travel.mode) : f);
+  const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Whitechapel, London";
 
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
-        <ScreenHeader title="Care nearby" subtitle="Whitechapel, London" back="/home" />
+        <ScreenHeader title="Care nearby" subtitle={subtitle} back="/home" />
+
+        <TravelBanner />
 
         {/* Map placeholder */}
         <div className="px-5 pt-4">
+
           <div className="relative h-44 overflow-hidden rounded-3xl border border-border shadow-card">
             <div
               className="absolute inset-0"
@@ -88,7 +96,8 @@ function Care() {
                     : "border-border bg-card text-foreground hover:border-primary/40"
                 }`}
               >
-                {f}
+                {filterLabel(f)}
+
               </button>
             ))}
           </div>
