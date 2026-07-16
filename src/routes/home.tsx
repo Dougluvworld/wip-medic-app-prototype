@@ -26,7 +26,12 @@ const urgencyColor = {
 function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const emergency = useEmergencyInfo();
+  const travel = useTravelState();
+  const emergency = getEmergencyInfo(
+    travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
+  );
+
+
 
 
   return (
