@@ -120,7 +120,7 @@ function ProviderDetail() {
           {/* Trust chips */}
           {p.badges && p.badges.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {p.badges.map((b) => (
+              {p.badges.map((b: string) => (
                 <span key={b} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground/80 shadow-card">
                   <CheckCircle2 className="h-3 w-3 text-success" /> {b}
                 </span>
