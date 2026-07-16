@@ -27,18 +27,22 @@ export const Route = createFileRoute("/care")({
 function Care() {
   const { type } = Route.useSearch();
   const [filter, setFilter] = useState<Filter>(type ?? "All");
-  // Sync when navigating with a new ?type=
   useEffect(() => { if (type) setFilter(type); }, [type]);
+  const travel = useTravelState();
   const list = providers.filter((p) => filter === "All" || p.type === filter);
-
+  const filterLabel = (f: Filter) => (f === "GP" ? careLabel(travel.mode) : f);
+  const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Whitechapel, London";
 
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
-        <ScreenHeader title="Care nearby" subtitle="Whitechapel, London" back="/home" />
+        <ScreenHeader title="Care nearby" subtitle={subtitle} back="/home" />
+
+        <TravelBanner />
 
         {/* Map placeholder */}
         <div className="px-5 pt-4">
+
           <div className="relative h-44 overflow-hidden rounded-3xl border border-border shadow-card">
             <div
               className="absolute inset-0"
