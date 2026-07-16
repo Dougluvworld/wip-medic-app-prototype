@@ -51,7 +51,10 @@ function Home() {
           </Link>
         </header>
 
+        <TravelBanner />
+
         <div className="flex-1 space-y-5 px-5 py-6">
+
           {/* Emergency banner */}
           <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 animate-fade-in">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive">
