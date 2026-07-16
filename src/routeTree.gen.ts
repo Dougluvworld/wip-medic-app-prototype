@@ -14,9 +14,9 @@ import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as HomeRouteImport } from './routes/home'
-import { Route as CareRouteImport } from './routes/care'
 import { Route as AssessRouteImport } from './routes/assess'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CareIndexRouteImport } from './routes/care.index'
 import { Route as CareIdRouteImport } from './routes/care.$id'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -44,11 +44,6 @@ const HomeRoute = HomeRouteImport.update({
   path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CareRoute = CareRouteImport.update({
-  id: '/care',
-  path: '/care',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AssessRoute = AssessRouteImport.update({
   id: '/assess',
   path: '/assess',
@@ -59,91 +54,97 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CareIndexRoute = CareIndexRouteImport.update({
+  id: '/care/',
+  path: '/care/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CareIdRoute = CareIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CareRoute,
+  id: '/care/$id',
+  path: '/care/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assess': typeof AssessRoute
-  '/care': typeof CareRouteWithChildren
   '/home': typeof HomeRoute
   '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/care/$id': typeof CareIdRoute
+  '/care/': typeof CareIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assess': typeof AssessRoute
-  '/care': typeof CareRouteWithChildren
   '/home': typeof HomeRoute
   '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/care/$id': typeof CareIdRoute
+  '/care': typeof CareIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assess': typeof AssessRoute
-  '/care': typeof CareRouteWithChildren
   '/home': typeof HomeRoute
   '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/care/$id': typeof CareIdRoute
+  '/care/': typeof CareIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/assess'
-    | '/care'
     | '/home'
     | '/onboarding'
     | '/profile'
     | '/results'
     | '/settings'
     | '/care/$id'
+    | '/care/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/assess'
-    | '/care'
     | '/home'
     | '/onboarding'
     | '/profile'
     | '/results'
     | '/settings'
     | '/care/$id'
+    | '/care'
   id:
     | '__root__'
     | '/'
     | '/assess'
-    | '/care'
     | '/home'
     | '/onboarding'
     | '/profile'
     | '/results'
     | '/settings'
     | '/care/$id'
+    | '/care/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssessRoute: typeof AssessRoute
-  CareRoute: typeof CareRouteWithChildren
   HomeRoute: typeof HomeRoute
   OnboardingRoute: typeof OnboardingRoute
   ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
   SettingsRoute: typeof SettingsRoute
+  CareIdRoute: typeof CareIdRoute
+  CareIndexRoute: typeof CareIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -183,13 +184,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/care': {
-      id: '/care'
-      path: '/care'
-      fullPath: '/care'
-      preLoaderRoute: typeof CareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/assess': {
       id: '/assess'
       path: '/assess'
@@ -204,35 +198,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/care/': {
+      id: '/care/'
+      path: '/care'
+      fullPath: '/care/'
+      preLoaderRoute: typeof CareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/care/$id': {
       id: '/care/$id'
-      path: '/$id'
+      path: '/care/$id'
       fullPath: '/care/$id'
       preLoaderRoute: typeof CareIdRouteImport
-      parentRoute: typeof CareRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface CareRouteChildren {
-  CareIdRoute: typeof CareIdRoute
-}
-
-const CareRouteChildren: CareRouteChildren = {
-  CareIdRoute: CareIdRoute,
-}
-
-const CareRouteWithChildren = CareRoute._addFileChildren(CareRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssessRoute: AssessRoute,
-  CareRoute: CareRouteWithChildren,
   HomeRoute: HomeRoute,
   OnboardingRoute: OnboardingRoute,
   ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
   SettingsRoute: SettingsRoute,
+  CareIdRoute: CareIdRoute,
+  CareIndexRoute: CareIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

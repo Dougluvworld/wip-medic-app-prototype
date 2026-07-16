@@ -13,7 +13,7 @@ import { useState, useEffect } from "react";
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
 type Filter = (typeof filters)[number];
 
-export const Route = createFileRoute("/care")({
+export const Route = createFileRoute("/care/")({
   head: () => ({
     meta: [{ title: "Find Care Nearby — Medi-Care" }, { name: "robots", content: "noindex" }],
   }),
