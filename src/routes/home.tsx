@@ -3,7 +3,9 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
 import { recentAssessments } from "@/lib/mock-data";
+import { useEmergencyInfo } from "@/lib/locale";
 import { Settings, AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList } from "lucide-react";
+
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -21,6 +23,8 @@ const urgencyColor = {
 function Home() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const emergency = useEmergencyInfo();
+
 
   return (
     <PhoneFrame>
@@ -48,16 +52,17 @@ function Home() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-destructive">Life-threatening emergency?</p>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Call 999 immediately for chest pain, severe bleeding, or breathing difficulty.
+                Call {emergency.number} immediately for chest pain, severe bleeding, or breathing difficulty.
               </p>
             </div>
             <a
-              href="tel:999"
+              href={`tel:${emergency.number}`}
               className="shrink-0 rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft"
             >
-              Call 999
+              Call {emergency.number}
             </a>
           </div>
+
 
           {/* Quick assessment CTA */}
           <Link

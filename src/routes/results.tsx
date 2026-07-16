@@ -3,7 +3,9 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAssessment } from "@/lib/assessment-store";
-import { AlertTriangle, ChevronRight, Info, Sparkles } from "lucide-react";
+import { useEmergencyInfo } from "@/lib/locale";
+import { AlertTriangle, ChevronRight, Info, Phone, Sparkles } from "lucide-react";
+
 
 export const Route = createFileRoute("/results")({
   head: () => ({
@@ -105,16 +107,17 @@ function Results() {
   const a = useAssessment();
   const urgency = computeUrgency(a.severity, a.additional, a.mainSymptom);
   const list = matchConditions(a.mainSymptom, a.additional);
+  const emergency = useEmergencyInfo();
 
   const urgencyMap = {
     Low: {
       label: "Low urgency",
       tone: "bg-success/15 text-success border-success/30",
       ring: "from-success/60 to-success/30",
-      next: "Self-care & monitor",
+      next: "Self-care & speak to a pharmacist",
       nextBody: "Rest, hydration and over-the-counter relief should help. See a pharmacist if symptoms persist beyond 3 days.",
-      cta: "Find a pharmacy",
-      to: "/care" as const,
+      cta: "Show pharmacies near me",
+      careType: "Pharmacy" as const,
     },
     Medium: {
       label: "Medium urgency",
@@ -122,19 +125,20 @@ function Results() {
       ring: "from-warning/70 to-warning/30",
       next: "Book a GP appointment",
       nextBody: "We recommend seeing your GP within 24–48 hours for a proper evaluation.",
-      cta: "Find a GP",
-      to: "/care" as const,
+      cta: "Show GPs near me",
+      careType: "GP" as const,
     },
     High: {
       label: "High urgency",
       tone: "bg-destructive/15 text-destructive border-destructive/30",
       ring: "from-destructive/70 to-destructive/30",
       next: "Seek urgent care now",
-      nextBody: "Go to an Urgent Treatment Centre or A&E. If severe, call 999 immediately.",
-      cta: "Find urgent care",
-      to: "/care" as const,
+      nextBody: `Go to an Urgent Treatment Centre or A&E. If severe, call ${emergency.number} immediately.`,
+      cta: "Show urgent care near me",
+      careType: "Urgent Care" as const,
     },
   }[urgency];
+
 
   return (
     <PhoneFrame>
@@ -161,11 +165,18 @@ function Results() {
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
               <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-destructive">If life-threatening, call 999 now.</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Chest pain, difficulty breathing, sudden weakness, severe bleeding.</p>
+                <p className="text-sm font-semibold text-destructive">
+                  If life-threatening, call {emergency.number} now.
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Chest pain, difficulty breathing, sudden weakness, severe bleeding.
+                </p>
               </div>
-              <a href="tel:999" className="rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft">
-                Call 999
+              <a
+                href={`tel:${emergency.number}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft"
+              >
+                <Phone className="h-3 w-3" /> Call {emergency.number}
               </a>
             </div>
           )}
@@ -176,12 +187,14 @@ function Results() {
             <h3 className="mt-1 font-display text-xl font-semibold">{urgencyMap.next}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{urgencyMap.nextBody}</p>
             <Link
-              to={urgencyMap.to}
+              to="/care"
+              search={{ type: urgencyMap.careType }}
               className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft"
             >
               {urgencyMap.cta}
             </Link>
           </div>
+
 
           {/* Possible conditions */}
           <div>
