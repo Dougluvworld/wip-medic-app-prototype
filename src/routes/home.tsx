@@ -120,7 +120,7 @@ function Home() {
                 <ClipboardList className="h-5 w-5" />
               </div>
               <p className="mt-3 text-sm font-semibold">Find care</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Pharmacies, GPs, A&E</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Pharmacies, GPs, Emergency Depts</p>
             </Link>
           </div>
 
