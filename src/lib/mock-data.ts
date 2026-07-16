@@ -86,6 +86,10 @@ export const providers: Provider[] = [
     openNow: true,
     address: "5 Bachelors Walk, Dublin 1, D01 K2C8",
     phone: "+353 1 872 1234",
+    badges: ["HSE-registered", "Same-day triage", "Online booking"],
+    reviewList: sampleReviews("liffey"),
+    ratingBreakdown: defaultBreakdown,
+    updatedAgo: "Updated 5 days ago",
   },
   {
     id: "citycare-urgent",
@@ -99,6 +103,10 @@ export const providers: Provider[] = [
     openNow: true,
     address: "88 Amiens Street, Dublin 1, D01 R6P7",
     phone: "+353 1 872 5555",
+    badges: ["24/7 walk-in", "X-ray on site", "Wheelchair accessible"],
+    reviewList: sampleReviews("citycare"),
+    ratingBreakdown: { 5: 80, 4: 14, 3: 4, 2: 1, 1: 1 },
+    updatedAgo: "Updated yesterday",
   },
   {
     id: "royal-hospital",
@@ -112,6 +120,10 @@ export const providers: Provider[] = [
     openNow: true,
     address: "Eccles Street, Dublin 7, D07 R2WY",
     phone: "+353 1 803 2000",
+    badges: ["Emergency Department", "24/7", "Public hospital"],
+    reviewList: sampleReviews("mater"),
+    ratingBreakdown: { 5: 55, 4: 25, 3: 12, 2: 5, 1: 3 },
+    updatedAgo: "Updated 1 week ago",
   },
   {
     id: "greenlane-pharmacy",
@@ -125,6 +137,10 @@ export const providers: Provider[] = [
     openNow: true,
     address: "14 Dorset Street, Dublin 1, D01 F7Y2",
     phone: "+353 1 872 0776",
+    badges: ["HSE-registered", "Minor ailments scheme"],
+    reviewList: sampleReviews("greenlane"),
+    ratingBreakdown: defaultBreakdown,
+    updatedAgo: "Updated 3 days ago",
   },
 ];
 
