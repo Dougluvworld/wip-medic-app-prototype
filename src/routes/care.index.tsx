@@ -124,6 +124,30 @@ function Care() {
           </div>
         )}
 
+        {/* Empty-state education when no assessment has been completed */}
+        {!rec && (
+          <div className="mx-5 mt-3 flex items-start gap-3 rounded-2xl border border-border bg-card p-3 shadow-card">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent text-primary">
+              <MapPin className="h-4 w-4" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold">Find the right care nearby</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                Browse pharmacies, GPs, urgent care and emergency departments around you.
+              </p>
+              <Link
+                to="/assess"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full gradient-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-soft"
+              >
+                <Stethoscope className="h-3 w-3" /> Start a quick assessment
+              </Link>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                Completing an assessment personalises which type of care is recommended.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Recommendation banner from latest assessment */}
         {rec && !recDismissed && (
           <div className="mx-5 mt-3 flex items-start gap-3 rounded-2xl border border-primary/30 bg-accent/60 p-3">
