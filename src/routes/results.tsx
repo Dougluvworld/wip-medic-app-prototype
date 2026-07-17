@@ -203,7 +203,7 @@ function Results() {
       `Next step: ${urgencyMap.next}`,
       "",
       "Possible conditions:",
-      ...list.slice(0, 3).map((c) => `  • ${c.name} — ${likelihood(c.confidence).label}`),
+      ...list.slice(0, 3).map((c, i) => `  • ${c.name} — ${rankLabel(i).label}`),
       "",
       "Guidance only — not a medical diagnosis.",
     ];
