@@ -435,18 +435,25 @@ function Assess() {
                 <textarea
                   ref={taRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleFreeText(input);
+                      if (taRef.current) taRef.current.style.height = "auto";
                     }
                   }}
                   placeholder="Type your reply…"
                   rows={1}
                   aria-label="Your reply"
-                  className="max-h-28 flex-1 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-muted-foreground"
+                  className="max-h-28 min-h-[24px] flex-1 resize-none overflow-y-auto bg-transparent text-sm leading-6 outline-none placeholder:text-muted-foreground"
                 />
+
               </div>
 
               <button
