@@ -7,7 +7,7 @@ import { assessmentStore } from "@/lib/assessment-store";
 import { pickFollowUps, detectRedFlag, type FollowUp } from "@/lib/follow-ups";
 import { runAssessment } from "@/lib/assessment.functions";
 import { loadProfile } from "@/lib/profile-store";
-import { ArrowUp, RefreshCw, SkipForward } from "lucide-react";
+import { ArrowUp, HelpCircle, RefreshCw, SkipForward } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/assess")({
@@ -372,8 +372,13 @@ function Assess() {
 
           {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} picked={severityPicked} />}
 
+          {phase.kind === "followup" && followUps[phase.idx]?.why && !typing && (
+            <WhyChip why={followUps[phase.idx].why!} />
+          )}
+
           {showThinking && (
-            <div className="animate-fade-in-up pt-2">
+            <div className="animate-fade-in-up space-y-3 pt-2">
+              <ThinkingSteps />
               <button
                 onClick={cancelThinking}
                 className="mx-auto flex h-10 items-center justify-center rounded-full border border-border bg-card px-5 text-xs font-semibold text-muted-foreground hover:text-foreground"
