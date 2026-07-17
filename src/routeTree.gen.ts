@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -19,6 +20,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CareIndexRouteImport } from './routes/care.index'
 import { Route as CareIdRouteImport } from './routes/care.$id'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/care/$id': typeof CareIdRoute
   '/care/': typeof CareIndexRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/care/$id': typeof CareIdRoute
   '/care': typeof CareIndexRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/care/$id': typeof CareIdRoute
   '/care/': typeof CareIndexRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/results'
     | '/settings'
+    | '/terms'
     | '/care/$id'
     | '/care/'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/results'
     | '/settings'
+    | '/terms'
     | '/care/$id'
     | '/care'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/results'
     | '/settings'
+    | '/terms'
     | '/care/$id'
     | '/care/'
   fileRoutesById: FileRoutesById
@@ -143,12 +155,20 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
   SettingsRoute: typeof SettingsRoute
+  TermsRoute: typeof TermsRoute
   CareIdRoute: typeof CareIdRoute
   CareIndexRoute: typeof CareIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
   SettingsRoute: SettingsRoute,
+  TermsRoute: TermsRoute,
   CareIdRoute: CareIdRoute,
   CareIndexRoute: CareIndexRoute,
 }
