@@ -80,8 +80,11 @@ function Assess() {
     });
   };
 
-  // Kick off first prompt
+  // Kick off first prompt (guard against StrictMode double-invoke)
+  const bootedRef = useRef(false);
   useEffect(() => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
     void say("Hi 👋 I'm Medi. Tell me what's been bothering you — describe it in your own words.");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
