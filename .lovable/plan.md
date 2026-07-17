@@ -1,29 +1,26 @@
-Goal: Keep the Care tab discoverable, but make it feel purposeful before a user has completed a symptom assessment.
+## Bottom navigation: reorder + stabilise
 
-1. Add an empty-state banner to `/care` when no recent assessment exists
-   - Friendly copy explaining that Care shows nearby pharmacies, GPs, urgent care and emergency departments.
-   - Primary CTA: “Start a quick assessment” → links to `/assess`.
-   - Secondary note: completing an assessment personalises the recommended care type.
+### New order
+`Home · Profile · [Assess FAB] · Care · Settings`
 
-2. Hide the assessment-driven recommendation banner when no recommendation exists
-   - Currently `rec && !recDismissed` already guards it, but verify the fallback feels natural (no blank gap).
+Rationale: left side = "who/where I am" (Home, Profile). Centre FAB = the primary action (Assess). Right side = "what to do next" (Care) and app config (Settings). Reads left-to-right as *identify → assess → act*.
 
-3. Make the Home shortcut contextual
-   - Keep the “Find care” shortcut, but add a small hint when no assessment exists (e.g., subtitle changes from “Pharmacies, GPs, Emergency Depts” to “Browse nearby care” or similar).
+### Consistency fix (nav shifting up/down between tabs)
 
-4. Ensure the BottomNav remains unchanged structurally
-   - Keep Home / Care / Assess (FAB) / Profile / Settings.
-   - The change is in the Care screen content, not navigation topology.
+The nav appears to move because of two subtle things in `src/components/BottomNav.tsx`:
 
-5. Polish the Care screen when a recommendation *is* present
-   - Keep the existing recommended-types filter and sorting logic.
-   - Make the banner dismissible state persist only for the session (current behaviour) or optionally not dismissible for first-time visitors.
+1. The centre FAB uses `-mt-6` and the row uses `items-end`. When the Assess route is active, the FAB gets `scale-105`, nudging its visual baseline and making neighbouring items feel like they've shifted.
+2. Row height isn't pinned — it's implied by the tallest child (the FAB). Any change to icon/label rendering per route can cause 1–2px drift.
 
-Out of scope:
-- No new backend or data changes.
-- No removal of the Care tab or route.
-- No changes to the assessment flow itself.
+Fix:
+- Give the `<ul>` a fixed height (e.g. `h-16`) and use `items-center` instead of `items-end`, so all five slots share one baseline regardless of active state.
+- Anchor the FAB with absolute positioning inside its centred grid cell (or `translate-y` from a fixed reference) so its "lift" no longer influences row height.
+- Drop the `scale-105` active pulse on the FAB (or replace with a subtle ring) so the active state doesn't change its footprint.
+- Keep `sticky bottom-0` + `pb-[env(safe-area-inset-bottom)]` unchanged.
 
-Files likely touched:
-- `src/routes/care.index.tsx`
-- `src/routes/home.tsx` (minor subtitle tweak)
+### Files touched
+- `src/components/BottomNav.tsx` — reorder items, pin row height, restructure FAB positioning, remove scale-on-active.
+
+### Out of scope
+- No route changes, no icon changes, no new tabs.
+- No changes to page content or the FAB's gradient/styling beyond the active-state tweak.
