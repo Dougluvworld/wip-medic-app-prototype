@@ -93,7 +93,7 @@ Be specific to THIS person's answers. Do not give generic advice.`;
         model,
         output: Output.object({ schema: resultSchema }),
         prompt,
-        providerOptions: { lovable: { serviceTier: "priority" } },
+        providerOptions: { lovable: { service_tier: "priority" } },
       });
 
       return {
