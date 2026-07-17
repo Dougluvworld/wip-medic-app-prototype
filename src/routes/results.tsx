@@ -9,6 +9,7 @@ import { useTravelState } from "@/lib/travel-mode";
 import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
 import { saveHistoryEntry } from "@/lib/history-store";
+import { loadProfile } from "@/lib/profile-store";
 import { AlertTriangle, Copy, Info, Phone, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -171,8 +172,14 @@ function Results() {
 
   // Persist recommendation for /care AND save a history entry once.
   const [saved, setSaved] = useState(false);
+  const [ec, setEc] = useState<{ name: string; phone: string }>({ name: "", phone: "" });
   useEffect(() => {
     assessmentStore.set({ careRecommendation: recommendation });
+    const p = loadProfile();
+    setEc({
+      name: (p.emergencyContact?.name ?? "").trim(),
+      phone: (p.emergencyContact?.phone ?? "").trim(),
+    });
     if (!saved && (a.mainSymptom || a.redFlag)) {
       saveHistoryEntry({
         mainSymptom: a.mainSymptom ?? "Symptom check",
@@ -184,6 +191,7 @@ function Results() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urgency, a.redFlag]);
+  const hasEc = ec.phone.length > 0;
 
   const copySummary = async () => {
     const lines = [
