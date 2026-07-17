@@ -8,9 +8,9 @@ import { hasOnboarded } from "@/lib/profile-store";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Medi-Care — Assess. Navigate. Care." },
+      { title: "Medi-care" },
       { name: "description", content: "AI-powered healthcare navigation. Understand your symptoms and find the right care nearby, in minutes." },
-      { property: "og:title", content: "Medi-Care — Assess. Navigate. Care." },
+      { property: "og:title", content: "Medi-care" },
       { property: "og:description", content: "AI-powered healthcare navigation. Understand your symptoms and find the right care nearby, in minutes." },
       { property: "og:url", content: "/" },
       { property: "og:image", content: "/og-cover.jpg" },
