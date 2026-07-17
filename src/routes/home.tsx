@@ -69,7 +69,7 @@ function Home() {
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
         {/* Header */}
-        <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+18px)]">
+        <header className="relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+18px)]">
           <div className="flex items-center gap-3">
             <Logo size={44} />
             <div>
@@ -77,7 +77,7 @@ function Home() {
               <p className="text-base font-semibold">{name}</p>
             </div>
           </div>
-          <InlineThemeToggle />
+          <InlineThemeToggle className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
           {/* Compact emergency call pill — dials the user's saved contact when available */}
           <a
             href={sosHref}
