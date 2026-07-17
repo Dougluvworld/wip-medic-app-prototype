@@ -91,10 +91,15 @@ function Assess() {
   }, [messages, typing, phase]);
 
   // Advance to a given phase and post its prompt
-  const advance = async (next: Phase) => {
+  const advance = async (next: Phase, ups: FollowUp[] = followUps) => {
     setPhase(next);
     if (next.kind === "followup") {
-      await say(followUps[next.idx].prompt);
+      const q = ups[next.idx];
+      if (!q) {
+        await advance({ kind: "duration" }, ups);
+        return;
+      }
+      await say(q.prompt);
     } else if (next.kind === "duration") {
       await say("How long has this been going on?");
     } else if (next.kind === "severity") {
