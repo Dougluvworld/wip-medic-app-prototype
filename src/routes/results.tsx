@@ -254,6 +254,7 @@ function Results() {
       <div className="flex min-h-full flex-col">
         <ScreenHeader
           title="AI assessment"
+          subtitle="Guidance, not diagnosis"
           back="auto"
           backFallback="/home"
           right={
