@@ -10,9 +10,10 @@ import { careLabel } from "@/lib/care-labels";
 import { useAssessment } from "@/lib/assessment-store";
 import { scoreProvider } from "@/lib/care-recommendation";
 import { haversineKm, useUserLocation } from "@/lib/use-user-location";
-import { Clock, MapPin, MapPinOff, Navigation, Search, Sparkles, Stethoscope, Star, X } from "lucide-react";
+import { Building2, Clock, FlaskConical, HeartPulse, Info, MapPin, MapPinOff, Navigation, Phone, Search, Sparkles, Stethoscope, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { isOpenNow, currentHoursLabel } from "@/lib/hours";
+import { useNavigate } from "@tanstack/react-router";
 
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
 type Filter = (typeof filters)[number];
@@ -80,9 +81,10 @@ function Care() {
   }, [enriched, filter, rec]);
 
   const filterLabel = (f: Filter) => (f === "GP" ? careLabel(travel.mode) : f);
-  const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Dublin, Ireland";
+  const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Sample area";
 
   const showLocationPrompt = !coords && !locationDismissed && status !== "denied" && status !== "unavailable";
+  const anySample = list.some((p) => p.sample);
 
   return (
     <PhoneFrame>
@@ -91,7 +93,23 @@ function Care() {
 
         <TravelBanner />
 
-        <div className="px-5 pt-4">
+        {/* Prototype transparency banner */}
+        {anySample && (
+          <div className="mx-5 mt-3 flex items-start gap-3 rounded-2xl border border-primary/25 bg-accent/60 p-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Info className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold">Prototype preview</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                This prototype currently demonstrates how nearby healthcare providers will be displayed.
+                Live provider data will be connected in a future release.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="px-5 pt-3">
           <ProviderMap providers={list} userLocation={coords} height={176} />
         </div>
 
@@ -189,6 +207,16 @@ function Care() {
 
         {/* Provider list */}
         <div className="flex-1 space-y-3 px-5 py-4">
+          {anySample && (
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Sample healthcare providers
+              </h3>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Prototype
+              </span>
+            </div>
+          )}
           {list.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/40 p-6 text-center">
               <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-muted text-muted-foreground">
@@ -204,7 +232,7 @@ function Care() {
               </button>
             </div>
           ) : (
-            list.map((p) => <ProviderCard key={p.id} p={p} recommended={false} hasCoords={!!coords} />)
+            list.map((p) => <ProviderCard key={p.id} p={p} hasCoords={!!coords} />)
           )}
         </div>
 
@@ -221,50 +249,93 @@ const typeStyle: Record<Provider["type"], string> = {
   Hospital: "bg-destructive/10 text-destructive",
 };
 
-function ProviderCard({ p, recommended, hasCoords }: { p: Provider; recommended: boolean; hasCoords: boolean }) {
+const typeIcon: Record<Provider["type"], React.ComponentType<{ className?: string }>> = {
+  Pharmacy: FlaskConical,
+  GP: Stethoscope,
+  "Urgent Care": HeartPulse,
+  Hospital: Building2,
+};
+
+function ProviderCard({ p, hasCoords }: { p: Provider; hasCoords: boolean }) {
+  const nav = useNavigate();
+  const TypeIcon = typeIcon[p.type];
+  const mapsHref =
+    typeof p.lat === "number" && typeof p.lng === "number"
+      ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`
+      : `https://maps.google.com/?q=${encodeURIComponent(p.name)}`;
+  const hasPhone = p.phone.trim().length > 0;
+
+  const open = () => nav({ to: "/care/$id", params: { id: p.id } });
+
   return (
-    <Link
-      to="/care/$id"
-      params={{ id: p.id }}
-      className={`block rounded-2xl border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft ${
-        recommended ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
-      }`}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === "Enter") open(); }}
+      className="block cursor-pointer rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
     >
       <div className="flex items-start gap-3">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl gradient-primary text-primary-foreground shadow-soft">
-          <MapPin className="h-5 w-5" />
+          <TypeIcon className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${typeStyle[p.type]}`}>
               {p.type}
             </span>
-            {p.openNow ? (
-              <span className="text-[10px] font-semibold text-success">● Open now</span>
-            ) : (
-              <span className="text-[10px] font-semibold text-muted-foreground">● {p.hours}</span>
+            {p.sample && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Sample
+              </span>
             )}
           </div>
           <p className="mt-1 truncate text-sm font-semibold">{p.name}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               {hasCoords ? (
-                <><Navigation className="h-3 w-3" /> {p.distanceKm} km · {p.travelMin} min</>
+                <><Navigation className="h-3 w-3" /> {p.distanceKm} km · ~{p.travelMin} min</>
               ) : (
-                <><MapPinOff className="h-3 w-3" /> ~{p.distanceKm} km · {p.travelMin} min</>
+                <><MapPinOff className="h-3 w-3" /> ~{p.distanceKm} km · ~{p.travelMin} min</>
               )}
             </span>
-            {p.openNow && (
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" /> {p.hours}
-              </span>
-            )}
             <span className="inline-flex items-center gap-1">
-              <Star className="h-3 w-3 fill-current text-warning" /> {p.rating} ({p.reviews})
+              <Clock className="h-3 w-3" />
+              {p.sample ? "Hours available when connected" : (p.openNow ? "Open now" : p.hours)}
             </span>
           </div>
         </div>
       </div>
-    </Link>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {hasPhone ? (
+          <a
+            href={`tel:${p.phone.replace(/\s+/g, "")}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex h-10 items-center justify-center gap-1.5 rounded-xl gradient-primary text-xs font-semibold text-primary-foreground shadow-soft"
+            aria-label={`Call ${p.name}`}
+          >
+            <Phone className="h-3.5 w-3.5" /> Call
+          </a>
+        ) : (
+          <span
+            className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-muted text-[11px] font-semibold text-muted-foreground"
+            title="Available when connected to live provider data"
+          >
+            <Phone className="h-3.5 w-3.5" /> Call — soon
+          </span>
+        )}
+        <a
+          href={mapsHref}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground hover:bg-accent"
+          aria-label={`Directions to ${p.name}`}
+        >
+          <Navigation className="h-3.5 w-3.5" /> Directions
+        </a>
+      </div>
+    </div>
   );
 }

@@ -11,7 +11,7 @@ import { loadProfile } from "@/lib/profile-store";
 import { loadHistory, formatRelative, type HistoryEntry } from "@/lib/history-store";
 import { useAssessment } from "@/lib/assessment-store";
 import { dailyTip } from "@/lib/tips";
-import { AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList, Phone } from "lucide-react";
+import { AlertTriangle, Stethoscope, ChevronRight, Clock, UserCircle2, ClipboardList, Phone, Video, Pill, BellRing, FileHeart, Watch, Users, Plane } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/home")({
@@ -189,10 +189,43 @@ function Home() {
               <p className="mt-1 text-sm leading-relaxed text-foreground">{tip}</p>
             </div>
           )}
+
+          {/* Coming soon — signals the long-term product vision */}
+          <div>
+            <div className="mb-3 flex items-center justify-between px-1">
+              <h3 className="text-sm font-semibold text-foreground">Coming soon</h3>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Roadmap
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <ComingSoonCard icon={<Video className="h-4 w-4" />} label="Video GP consult" />
+              <ComingSoonCard icon={<Pill className="h-4 w-4" />} label="Prescriptions" />
+              <ComingSoonCard icon={<BellRing className="h-4 w-4" />} label="Medication reminders" />
+              <ComingSoonCard icon={<FileHeart className="h-4 w-4" />} label="Health records" />
+              <ComingSoonCard icon={<Watch className="h-4 w-4" />} label="Wearable sync" />
+              <ComingSoonCard icon={<Users className="h-4 w-4" />} label="Family profiles" />
+              <ComingSoonCard icon={<Plane className="h-4 w-4" />} label="Travel health" />
+            </div>
+          </div>
         </div>
 
         <BottomNav />
       </div>
     </PhoneFrame>
+  );
+}
+
+function ComingSoonCard({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card/60 p-3">
+      <div className="flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-xl bg-accent text-primary">{icon}</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+          <Clock className="h-2.5 w-2.5" /> Soon
+        </span>
+      </div>
+      <p className="mt-2 text-xs font-semibold text-foreground/85">{label}</p>
+    </div>
   );
 }

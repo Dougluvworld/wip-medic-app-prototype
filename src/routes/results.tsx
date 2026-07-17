@@ -10,7 +10,7 @@ import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
 import { saveHistoryEntry } from "@/lib/history-store";
 import { loadProfile } from "@/lib/profile-store";
-import { AlertTriangle, Copy, Info, Phone, Printer, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, Copy, HeartPulse, Info, Phone, Printer, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -310,39 +310,68 @@ function Results() {
           {/* Urgency hero */}
           <div className={`relative overflow-hidden rounded-3xl border p-5 shadow-card animate-scale-in ${urgencyMap.tone}`}>
             <div className={`pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br ${urgencyMap.ring} opacity-40 blur-3xl`} />
-            <p className="text-xs font-semibold uppercase tracking-widest opacity-80">Urgency level</p>
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-80">Recommended urgency</p>
             <h2 className="mt-1 font-display text-3xl font-semibold">{urgencyMap.label}</h2>
             <p className="mt-2 text-sm opacity-90">
-              Based on {a.mainSymptom || "your symptom"}, severity {a.severity}/10
-              {a.additional.length ? ` and ${a.additional.length} related symptoms` : ""}.
+              Based on the information you provided about {a.mainSymptom || "your symptom"} (severity {a.severity}/10
+              {a.additional.length ? `, plus ${a.additional.length} related symptom${a.additional.length > 1 ? "s" : ""}` : ""}).
             </p>
           </div>
 
-          {/* Red-flag banner */}
+          {/* Full-width emergency experience */}
           {a.redFlag && (
-            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-destructive">Possible emergency</p>
-                  <p className="mt-1 text-xs text-foreground/80">{a.redFlag}</p>
+            <div className="relative overflow-hidden rounded-3xl border-2 border-destructive bg-destructive/10 p-5 shadow-float animate-scale-in">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-destructive/40 blur-3xl" />
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl" aria-hidden>🚨</span>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-destructive">
+                    Emergency care recommended
+                  </p>
                 </div>
-              </div>
-              <a
-                href={`tel:${emergency.number}`}
-                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-sm font-semibold text-destructive-foreground shadow-soft"
-              >
-                <Phone className="h-4 w-4" /> Call {emergency.number} now
-              </a>
-              {hasEc && (
+                <h3 className="mt-1 font-display text-2xl font-semibold text-destructive">
+                  This may require immediate medical attention
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+                  This assessment has identified symptoms that may require immediate medical attention.
+                  If you believe you are experiencing a medical emergency, contact your local emergency
+                  services immediately.
+                </p>
+                <div className="mt-3 rounded-2xl border border-destructive/30 bg-card p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-destructive">Why</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground/80">{a.redFlag}</p>
+                </div>
+
                 <a
-                  href={`tel:${ec.phone}`}
-                  className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/40 bg-card text-sm font-semibold text-destructive hover:bg-destructive/5"
-                  aria-label={`Call emergency contact ${ec.name || ec.phone}`}
+                  href={`tel:${emergency.number}`}
+                  className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-base font-semibold text-destructive-foreground shadow-soft active:scale-[0.98]"
                 >
-                  <Phone className="h-4 w-4" /> Call {ec.name || "emergency contact"}
+                  <Phone className="h-5 w-5" /> Call {emergency.number} now
                 </a>
-              )}
+                {hasEc && (
+                  <a
+                    href={`tel:${ec.phone}`}
+                    className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/40 bg-card text-sm font-semibold text-destructive hover:bg-destructive/5"
+                    aria-label={`Call emergency contact ${ec.name || ec.phone}`}
+                  >
+                    <Phone className="h-4 w-4" /> Call {ec.name || "emergency contact"}
+                  </a>
+                )}
+                <Link
+                  to="/care"
+                  search={{ type: "Hospital" as const }}
+                  className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-card text-sm font-semibold text-foreground shadow-card"
+                >
+                  <HeartPulse className="h-4 w-4" /> Find nearest emergency department
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => toast("First aid guidance is coming soon in a future release.")}
+                  className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-card text-sm font-semibold text-foreground shadow-card"
+                >
+                  <Info className="h-4 w-4" /> View first aid advice
+                </button>
+              </div>
             </div>
           )}
 
@@ -512,11 +541,22 @@ function Results() {
             </div>
           )}
 
-          {/* Disclaimer */}
+          {/* How was this recommendation generated? */}
+          <HowGenerated
+            usedProfile={!!ai?.usedProfile}
+            duration={a.duration}
+            severity={a.severity}
+            followUpCount={a.followUpAnswers.length}
+          />
+
+          {/* Reassuring disclaimer */}
           <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/50 p-4">
             <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              <span className="font-semibold text-foreground">Guidance only.</span> This is not a medical diagnosis. Always consult a qualified healthcare professional for medical advice.
+              <span className="font-semibold text-foreground">Medi-Care provides AI-assisted health guidance</span>{" "}
+              to help you understand your symptoms and decide the most appropriate next step. It does not
+              replace qualified healthcare professionals. If you believe you are experiencing a medical
+              emergency, contact your local emergency services immediately.
             </p>
           </div>
         </div>
@@ -524,5 +564,68 @@ function Results() {
         <BottomNav />
       </div>
     </PhoneFrame>
+  );
+}
+
+function HowGenerated({
+  usedProfile,
+  duration,
+  severity,
+  followUpCount,
+}: {
+  usedProfile: boolean;
+  duration: string | null;
+  severity: number;
+  followUpCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const items = [
+    { label: "Clinical symptom rules", on: true },
+    { label: "AI reasoning across your answers", on: true },
+    { label: `Severity you reported (${severity}/10)`, on: severity > 0 },
+    { label: `Duration${duration ? ` (${duration})` : ""}`, on: !!duration },
+    { label: `Your ${followUpCount} follow-up answer${followUpCount === 1 ? "" : "s"}`, on: followUpCount > 0 },
+    { label: "Your saved health profile", on: usedProfile },
+  ];
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-card">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">How was this recommendation generated?</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            A quick look at what shaped your result.
+          </p>
+        </div>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="border-t border-border px-4 py-3 animate-fade-in-up">
+          <ul className="space-y-1.5">
+            {items.map((it) => (
+              <li key={it.label} className="flex items-start gap-2 text-xs">
+                <span
+                  className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-bold ${
+                    it.on ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                  aria-hidden
+                >
+                  {it.on ? "✓" : "—"}
+                </span>
+                <span className={it.on ? "text-foreground/85" : "text-muted-foreground"}>{it.label}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            We combine these signals to suggest the most appropriate next step. This is guidance to
+            help you decide what to do — not a diagnosis.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

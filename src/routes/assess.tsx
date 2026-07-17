@@ -7,7 +7,7 @@ import { assessmentStore } from "@/lib/assessment-store";
 import { pickFollowUps, detectRedFlag, type FollowUp } from "@/lib/follow-ups";
 import { runAssessment } from "@/lib/assessment.functions";
 import { loadProfile } from "@/lib/profile-store";
-import { ArrowUp, RefreshCw, SkipForward } from "lucide-react";
+import { ArrowUp, HelpCircle, RefreshCw, SkipForward } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/assess")({
@@ -372,8 +372,13 @@ function Assess() {
 
           {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} picked={severityPicked} />}
 
+          {phase.kind === "followup" && followUps[phase.idx]?.why && !typing && (
+            <WhyChip why={followUps[phase.idx].why!} />
+          )}
+
           {showThinking && (
-            <div className="animate-fade-in-up pt-2">
+            <div className="animate-fade-in-up space-y-3 pt-2">
+              <ThinkingSteps />
               <button
                 onClick={cancelThinking}
                 className="mx-auto flex h-10 items-center justify-center rounded-full border border-border bg-card px-5 text-xs font-semibold text-muted-foreground hover:text-foreground"
@@ -582,6 +587,74 @@ function TypingBubble() {
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.15s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70" />
       </div>
+    </div>
+  );
+}
+
+function WhyChip({ why }: { why: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="pl-10 animate-fade-in-up">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+        aria-expanded={open}
+      >
+        <HelpCircle className="h-3 w-3" /> {open ? "Hide" : "Why are we asking this?"}
+      </button>
+      {open && (
+        <p className="mt-2 max-w-[85%] rounded-2xl border border-primary/20 bg-accent/50 px-3 py-2 text-[11px] leading-relaxed text-foreground/80">
+          {why}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ThinkingSteps() {
+  const items = [
+    "Reviewing symptom severity",
+    "Checking emergency indicators",
+    "Analysing health profile",
+    "Preparing care recommendation",
+  ];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (i >= items.length) return;
+    const t = setTimeout(() => setI((n) => n + 1), 900);
+    return () => clearTimeout(t);
+  }, [i, items.length]);
+  return (
+    <div className="mx-auto max-w-[280px] rounded-2xl border border-border bg-card p-4 shadow-card">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Analysing your symptoms…
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {items.map((label, idx) => {
+          const done = idx < i;
+          const active = idx === i;
+          return (
+            <li key={label} className="flex items-center gap-2 text-[12px]">
+              <span
+                className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-bold ${
+                  done
+                    ? "bg-success text-success-foreground"
+                    : active
+                      ? "animate-pulse bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                }`}
+                aria-hidden
+              >
+                {done ? "✓" : ""}
+              </span>
+              <span className={done || active ? "text-foreground" : "text-muted-foreground"}>
+                {label}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

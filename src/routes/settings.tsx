@@ -114,6 +114,21 @@ function SettingsPage() {
         <ScreenHeader title="Settings" back="auto" backFallback="/home" />
 
         <div className="flex-1 space-y-6 px-5 py-5">
+          {/* Prototype transparency */}
+          <div className="rounded-2xl border border-primary/25 bg-accent/50 p-4">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full gradient-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-soft">
+                Prototype version
+              </span>
+              <span className="text-[11px] font-semibold text-muted-foreground">v0.1.0</span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-foreground/80">
+              This application is currently demonstrating the future Medi-Care experience. Some
+              information shown is representative and will be connected to live healthcare systems
+              in future releases.
+            </p>
+          </div>
+
           <Group title="Preferences">
             <ToggleRow
               icon={<Moon className="h-4 w-4" />}
