@@ -87,6 +87,8 @@ function Home() {
         <TravelBanner />
 
         <div className="flex-1 space-y-5 px-5 py-6">
+          <InstallPrompt />
+
           {/* Quick assessment CTA */}
           <Link
             to="/assess"
