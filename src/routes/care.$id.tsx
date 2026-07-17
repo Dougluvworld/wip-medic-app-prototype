@@ -140,21 +140,8 @@ function ProviderDetail() {
           </a>
 
           {/* Map mini */}
-          <div className="relative h-40 overflow-hidden rounded-3xl border border-border shadow-card">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: "linear-gradient(oklch(0.94 0.02 180) 1px, transparent 1px), linear-gradient(90deg, oklch(0.94 0.02 180) 1px, transparent 1px)",
-                backgroundSize: "20px 20px",
-                backgroundColor: "oklch(0.98 0.01 180)",
-              }}
-            />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
-              <div className="grid h-10 w-10 place-items-center rounded-full gradient-primary text-primary-foreground shadow-float">
-                <MapPin className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
+          <ProviderMap providers={[p]} height={160} />
+
 
           {/* About */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
