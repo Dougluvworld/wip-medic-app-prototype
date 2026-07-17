@@ -1,3 +1,5 @@
+import type { WeeklySchedule } from "./hours";
+
 export type Review = {
   id: string;
   author: string;
@@ -19,6 +21,7 @@ export type Provider = {
   reviews: number;
   hours: string;
   openNow: boolean;
+  schedule: WeeklySchedule; // Sun..Sat — drives real-time open/closed
   address: string;
   phone: string;
   lat?: number;
@@ -28,6 +31,14 @@ export type Provider = {
   ratingBreakdown?: RatingBreakdown;
   updatedAgo?: string;
 };
+
+// Common schedule presets (Sun..Sat)
+const daily = (open: number, close: number): WeeklySchedule =>
+  [{ open, close }, { open, close }, { open, close }, { open, close }, { open, close }, { open, close }, { open, close }];
+const weekdayOnly = (open: number, close: number): WeeklySchedule =>
+  [null, { open, close }, { open, close }, { open, close }, { open, close }, { open, close }, null];
+const alwaysOpen: WeeklySchedule = ["24h", "24h", "24h", "24h", "24h", "24h", "24h"];
+
 
 const defaultBreakdown: RatingBreakdown = { 5: 68, 4: 22, 3: 7, 2: 2, 1: 1 };
 
@@ -77,6 +88,7 @@ export const providers: Provider[] = [
     reviewList: sampleReviews("boots"),
     ratingBreakdown: { 5: 74, 4: 18, 3: 5, 2: 2, 1: 1 },
     updatedAgo: "Updated 2 days ago",
+    schedule: daily(8, 22),
   },
   {
     id: "riverside-gp",
@@ -96,6 +108,7 @@ export const providers: Provider[] = [
     reviewList: sampleReviews("liffey"),
     ratingBreakdown: defaultBreakdown,
     updatedAgo: "Updated 5 days ago",
+    schedule: weekdayOnly(8.5, 18.5),
   },
   {
     id: "citycare-urgent",
@@ -115,6 +128,7 @@ export const providers: Provider[] = [
     reviewList: sampleReviews("citycare"),
     ratingBreakdown: { 5: 80, 4: 14, 3: 4, 2: 1, 1: 1 },
     updatedAgo: "Updated yesterday",
+    schedule: alwaysOpen,
   },
   {
     id: "royal-hospital",
@@ -134,6 +148,7 @@ export const providers: Provider[] = [
     reviewList: sampleReviews("mater"),
     ratingBreakdown: { 5: 55, 4: 25, 3: 12, 2: 5, 1: 3 },
     updatedAgo: "Updated 1 week ago",
+    schedule: alwaysOpen,
   },
   {
     id: "greenlane-pharmacy",
@@ -153,6 +168,7 @@ export const providers: Provider[] = [
     reviewList: sampleReviews("greenlane"),
     ratingBreakdown: defaultBreakdown,
     updatedAgo: "Updated 3 days ago",
+    schedule: daily(9, 19),
   },
 ];
 

@@ -181,9 +181,10 @@ function Assess() {
 
     if (phase.kind === "main") {
       assessmentStore.set({
-        mainSymptom: text.split(/[.,\n]/)[0].slice(0, 60).trim() || text.slice(0, 60),
+        mainSymptom: text.split(/[.,\n]/).map((s) => s.trim()).filter(Boolean).join(" — ").slice(0, 120) || text.slice(0, 120),
         bodyArea: detectBodyArea(text),
       });
+      assessmentStore.addRawText(text);
       const s = assessmentStore.get();
       const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
       setFollowUps(ups);
@@ -309,6 +310,7 @@ function Assess() {
               options={filterChips(
                 [
                   assessmentStore.get().mainSymptom ?? "",
+                  ...assessmentStore.get().rawTexts,
                   ...assessmentStore.get().followUpAnswers.map((a) => a.answer),
                 ].join(" "),
               )}

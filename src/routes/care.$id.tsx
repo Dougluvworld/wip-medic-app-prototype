@@ -5,7 +5,8 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { ProviderMap } from "@/components/ProviderMap";
 import { providers } from "@/lib/mock-data";
 import { Calendar, CheckCircle2, Clock, MapPin, MessageSquare, Navigation, Phone, Share2, ShieldCheck, Star } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { isOpenNow, currentHoursLabel } from "@/lib/hours";
 
 export const Route = createFileRoute("/care/$id")({
   head: ({ params }) => {
@@ -44,6 +45,13 @@ export const Route = createFileRoute("/care/$id")({
 function ProviderDetail() {
   const p = Route.useLoaderData();
   const [booked, setBooked] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const openNow = isOpenNow(p.schedule, now);
+  const hoursLabel = currentHoursLabel(p.schedule, now);
   const telHref = `tel:${p.phone.replace(/\s+/g, "")}`;
   const smsHref = `sms:${p.phone.replace(/\s+/g, "")}`;
   const mapsHref =
@@ -66,7 +74,7 @@ function ProviderDetail() {
         <div className="relative overflow-hidden px-5 pb-6 pt-2">
           <div className="rounded-3xl gradient-primary p-6 text-primary-foreground shadow-float">
             <p className="text-[11px] font-bold uppercase tracking-widest text-primary-foreground/80">
-              {p.type} · {p.openNow ? "Open now" : "Closed"}
+              {p.type} · {openNow ? "Open now" : "Closed"}
             </p>
             <h1 className="mt-1 font-display text-2xl font-semibold leading-tight">{p.name}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-primary-foreground/90">
@@ -134,7 +142,7 @@ function ProviderDetail() {
 
           {/* Address */}
           <InfoRow icon={<MapPin className="h-4 w-4" />} label="Address" value={p.address} />
-          <InfoRow icon={<Clock className="h-4 w-4" />} label="Hours" value={p.hours} sub={`Mon–Fri 08:00–20:00 · Sat 09:00–18:00${p.updatedAgo ? ` · ${p.updatedAgo}` : ""}`} />
+          <InfoRow icon={<Clock className="h-4 w-4" />} label="Hours" value={hoursLabel} sub={`${p.updatedAgo ?? ""}`} />
           <a href={telHref} className="block">
             <InfoRow icon={<Phone className="h-4 w-4" />} label="Phone" value={p.phone} sub="Tap to call" />
           </a>

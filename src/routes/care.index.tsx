@@ -12,6 +12,7 @@ import { scoreProvider } from "@/lib/care-recommendation";
 import { haversineKm, useUserLocation } from "@/lib/use-user-location";
 import { Clock, MapPin, Navigation, Sparkles, Star, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
+import { isOpenNow, currentHoursLabel } from "@/lib/hours";
 
 
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
@@ -39,19 +40,28 @@ function Care() {
   const travel = useTravelState();
   const { coords } = useUserLocation();
 
-  // Recompute distances from user coords when available.
+  // Tick every minute so open/closed stays fresh.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Recompute distances + real-time availability.
   const enriched: Provider[] = useMemo(() => {
-    if (!coords) return providers;
     return providers.map((p) => {
-      if (typeof p.lat !== "number" || typeof p.lng !== "number") return p;
-      const km = haversineKm(coords, { lat: p.lat, lng: p.lng });
-      return {
-        ...p,
-        distanceKm: Number(km.toFixed(1)),
-        travelMin: Math.max(1, Math.round(km * 12)),
-      };
+      const openNow = isOpenNow(p.schedule, now);
+      const hours = currentHoursLabel(p.schedule, now);
+      let distanceKm = p.distanceKm;
+      let travelMin = p.travelMin;
+      if (coords && typeof p.lat === "number" && typeof p.lng === "number") {
+        const km = haversineKm(coords, { lat: p.lat, lng: p.lng });
+        distanceKm = Number(km.toFixed(1));
+        travelMin = Math.max(1, Math.round(km * 12));
+      }
+      return { ...p, openNow, hours, distanceKm, travelMin };
     });
-  }, [coords]);
+  }, [coords, now]);
 
   const list = useMemo(() => {
     const filtered = enriched.filter((p) => filter === "All" || p.type === filter);

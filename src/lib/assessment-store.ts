@@ -5,6 +5,7 @@ import type { CareRecommendation } from "./care-recommendation";
 
 type AssessmentState = {
   mainSymptom: string | null;
+  rawTexts: string[];
   bodyArea: string | null;
   duration: string | null;
   severity: number; // 1-10
@@ -18,6 +19,7 @@ type AssessmentState = {
 
 const initial: AssessmentState = {
   mainSymptom: null,
+  rawTexts: [],
   bodyArea: null,
   duration: null,
   severity: 4,
@@ -41,7 +43,11 @@ export const assessmentStore = {
     emit();
   },
   addFollowUp: (ans: FollowUpAnswer) => {
-    state = { ...state, followUpAnswers: [...state.followUpAnswers, ans] };
+    state = { ...state, followUpAnswers: [...state.followUpAnswers, ans], rawTexts: [...state.rawTexts, ans.answer] };
+    emit();
+  },
+  addRawText: (t: string) => {
+    state = { ...state, rawTexts: [...state.rawTexts, t] };
     emit();
   },
   toggleAdditional: (s: string) => {
