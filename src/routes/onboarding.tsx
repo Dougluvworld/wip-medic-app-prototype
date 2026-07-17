@@ -185,9 +185,21 @@ function Onboarding() {
 
 function StepName({ name, setName }: { name: string; setName: (v: string) => void }) {
   const ref = useRef<HTMLInputElement>(null);
+  const [country, setCountry] = useState("");
   useEffect(() => {
-    // Small delay so the fade-in doesn't fight the mobile keyboard.
     const t = setTimeout(() => ref.current?.focus(), 250);
+    try {
+      const langs = [navigator.language, ...(navigator.languages ?? [])];
+      for (const l of langs) {
+        const m = l?.match(/[-_]([A-Z]{2})/i);
+        if (m) {
+          setCountry(m[1].toUpperCase());
+          break;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     return () => clearTimeout(t);
   }, []);
   return (
@@ -207,12 +219,22 @@ function StepName({ name, setName }: { name: string; setName: (v: string) => voi
         onChange={(e) => setName(e.target.value)}
         placeholder="Your name"
         autoComplete="given-name"
+        enterKeyHint="next"
         maxLength={60}
         className="mt-8 h-14 w-full rounded-2xl border border-border bg-card px-4 text-base font-medium outline-none transition-colors focus:border-primary"
       />
+      {country && (
+        <p className="mt-3 text-[12px] text-muted-foreground">
+          We detected you're in <span className="font-semibold text-foreground">{country}</span> — we'll tailor emergency numbers and units automatically.
+        </p>
+      )}
+      <p className="mt-6 rounded-xl bg-muted/50 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+        Browsers can't read health data from your phone, so we keep this manual and quick — most steps are one tap or skippable.
+      </p>
     </div>
   );
 }
+
 
 /* --------------------------- Step 2: Vitals --------------------------- */
 
