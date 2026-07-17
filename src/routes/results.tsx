@@ -382,12 +382,20 @@ function Results() {
             >
               {urgencyMap.cta}
             </Link>
-            <button
-              onClick={copySummary}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
-            >
-              <Copy className="h-4 w-4" /> Copy summary
-            </button>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                onClick={copySummary}
+                className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
+              >
+                <Copy className="h-4 w-4" /> Copy
+              </button>
+              <button
+                onClick={printSummary}
+                className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
+              >
+                <Printer className="h-4 w-4" /> Save as PDF
+              </button>
+            </div>
           </div>
 
           {/* Possible conditions — qualitative framing */}
