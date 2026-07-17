@@ -110,6 +110,32 @@ function matchConditions(mainSymptom: string | null, additional: string[]): Cond
       ];
 }
 
+function getWhileYouWaitTips(mainSymptom: string | null, additional: string[]) {
+  const hay = `${mainSymptom ?? ""} ${additional.join(" ")}`.toLowerCase();
+  if (/headache|migraine|head pain/.test(hay)) {
+    return ["Rest somewhere quiet and dim if you can.", "Try a cool cloth or wrapped ice pack on your forehead or neck.", "Sip water regularly if you are able to drink."];
+  }
+  if (/fever|temperature|chills|flu/.test(hay)) {
+    return ["Rest and keep fluids nearby.", "Wear light layers and avoid overheating.", "Keep note of your temperature and any new symptoms."];
+  }
+  if (/cough|sore throat|throat|cold|congestion/.test(hay)) {
+    return ["Sip warm or cool drinks, whichever feels better.", "Avoid smoke, vaping, and strong smells.", "Rest your voice if talking makes it worse."];
+  }
+  if (/stomach|abdominal|nausea|vomit|diarrhea/.test(hay)) {
+    return ["Take small, frequent sips of water if you can keep fluids down.", "Rest and avoid heavy meals until you feel ready.", "Keep track of vomiting, diarrhoea, or worsening pain."];
+  }
+  if (/back|muscle|strain|sprain|joint|knee|shoulder|neck pain/.test(hay)) {
+    return ["Use gentle movement only as tolerated.", "Try a wrapped cold or warm pack for short periods.", "Avoid lifting, twisting, or anything that sharply increases pain."];
+  }
+  if (/rash|itch|skin|burn/.test(hay)) {
+    return ["Use a cool compress on the area.", "Avoid scratching and pause any new skin products.", "Keep the area clean and uncovered if comfortable."];
+  }
+  if (/dizz|light.?headed|faint|vertigo/.test(hay)) {
+    return ["Sit or lie down until it passes.", "Stand up slowly and hold onto support.", "Avoid driving or climbing until you feel steady."];
+  }
+  return ["Rest somewhere comfortable and keep water nearby.", "Write down when symptoms started and what makes them better or worse.", "Avoid pushing through activities that clearly worsen symptoms."];
+}
+
 // Rank-based labels — guarantees a visible hierarchy regardless of raw scores.
 function rankLabel(rank: number): { label: string; tone: string } {
   if (rank === 0) return { label: "Most likely", tone: "bg-primary text-primary-foreground" };
@@ -171,6 +197,7 @@ function Results() {
   }[urgency];
 
   const recommendation = recommendCareTypes(urgency, a.redFlag);
+  const whileYouWaitTips = getWhileYouWaitTips(a.mainSymptom, a.additional);
 
   // Persist recommendation for /care AND save a history entry once.
   const [saved, setSaved] = useState(false);
@@ -397,6 +424,20 @@ function Results() {
               </button>
             </div>
           </div>
+
+          {urgency !== "High" && (
+            <div className="rounded-2xl border border-primary/25 bg-accent/50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">While you wait</p>
+              <ul className="mt-2 space-y-1.5">
+                {whileYouWaitTips.map((tip, i) => (
+                  <li key={i} className="text-xs leading-relaxed text-foreground/80">• {tip}</li>
+                ))}
+              </ul>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                Comfort steps only — do not delay care if symptoms are severe, worsening, or worrying.
+              </p>
+            </div>
+          )}
 
           {/* Possible conditions — qualitative framing */}
           {!a.redFlag && (
