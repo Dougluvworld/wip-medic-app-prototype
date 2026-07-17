@@ -1,5 +1,6 @@
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
+import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ReviewCard } from "@/components/ReviewCard";
 import { ProviderMap } from "@/components/ProviderMap";
@@ -7,6 +8,7 @@ import { providers } from "@/lib/mock-data";
 import { Calendar, CheckCircle2, Clock, MapPin, MessageSquare, Navigation, Phone, Share2, ShieldCheck, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isOpenNow, currentHoursLabel } from "@/lib/hours";
+
 
 export const Route = createFileRoute("/care/$id")({
   head: ({ params }) => {
@@ -64,8 +66,11 @@ function ProviderDetail() {
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
-        <ScreenHeader back="/care" right={
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent">
+        <ScreenHeader back="auto" backFallback="/care" right={
+          <button
+            aria-label="Share provider"
+            className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"
+          >
             <Share2 className="h-4 w-4" />
           </button>
         } />
@@ -165,9 +170,9 @@ function ProviderDetail() {
           {/* Reviews */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">What people say</h3>
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-success">
-                <ShieldCheck className="h-3 w-3" /> Verified reviews
+              <h3 className="text-sm font-semibold">Sample reviews</h3>
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                <ShieldCheck className="h-3 w-3" /> Demo data
               </span>
             </div>
 
@@ -228,6 +233,8 @@ function ProviderDetail() {
             </button>
           </div>
         </div>
+
+        <BottomNav />
       </div>
     </PhoneFrame>
   );
