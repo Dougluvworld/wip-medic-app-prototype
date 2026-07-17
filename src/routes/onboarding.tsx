@@ -183,25 +183,71 @@ function Onboarding() {
 
 /* --------------------------- Step 1: Name --------------------------- */
 
+// Timezone → country. Covers the common cases; keeps us honest when the
+// browser locale (e.g. en-GB on an Irish iPhone) disagrees with reality.
+const TZ_TO_CC: Record<string, string> = {
+  "Europe/Dublin": "IE", "Europe/London": "GB", "Europe/Paris": "FR",
+  "Europe/Madrid": "ES", "Europe/Lisbon": "PT", "Europe/Rome": "IT",
+  "Europe/Berlin": "DE", "Europe/Amsterdam": "NL", "Europe/Brussels": "BE",
+  "Europe/Zurich": "CH", "Europe/Vienna": "AT", "Europe/Athens": "GR",
+  "Europe/Warsaw": "PL", "Europe/Stockholm": "SE", "Europe/Oslo": "NO",
+  "Europe/Copenhagen": "DK", "Europe/Helsinki": "FI",
+  "America/New_York": "US", "America/Chicago": "US", "America/Denver": "US",
+  "America/Los_Angeles": "US", "America/Phoenix": "US",
+  "America/Toronto": "CA", "America/Vancouver": "CA",
+  "Australia/Sydney": "AU", "Australia/Melbourne": "AU", "Pacific/Auckland": "NZ",
+  "Asia/Tokyo": "JP", "Asia/Singapore": "SG", "Asia/Hong_Kong": "HK",
+  "Asia/Dubai": "AE", "Asia/Kolkata": "IN",
+};
+
+const COUNTRY_OPTIONS: Array<{ code: string; name: string }> = [
+  { code: "IE", name: "Ireland" }, { code: "GB", name: "United Kingdom" },
+  { code: "US", name: "United States" }, { code: "CA", name: "Canada" },
+  { code: "AU", name: "Australia" }, { code: "NZ", name: "New Zealand" },
+  { code: "FR", name: "France" }, { code: "DE", name: "Germany" },
+  { code: "ES", name: "Spain" }, { code: "IT", name: "Italy" },
+  { code: "PT", name: "Portugal" }, { code: "NL", name: "Netherlands" },
+  { code: "BE", name: "Belgium" }, { code: "CH", name: "Switzerland" },
+  { code: "SE", name: "Sweden" }, { code: "NO", name: "Norway" },
+  { code: "DK", name: "Denmark" }, { code: "FI", name: "Finland" },
+  { code: "PL", name: "Poland" }, { code: "GR", name: "Greece" },
+  { code: "JP", name: "Japan" }, { code: "SG", name: "Singapore" },
+  { code: "HK", name: "Hong Kong" }, { code: "AE", name: "UAE" },
+  { code: "IN", name: "India" },
+];
+
+function detectCountry(): string {
+  // 1) Timezone (most reliable — device setting, not display language)
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && TZ_TO_CC[tz]) return TZ_TO_CC[tz];
+  } catch {
+    /* ignore */
+  }
+  // 2) Locale region fallback
+  try {
+    const langs = [navigator.language, ...(navigator.languages ?? [])];
+    for (const l of langs) {
+      const m = l?.match(/[-_]([A-Z]{2})/i);
+      if (m) return m[1].toUpperCase();
+    }
+  } catch {
+    /* ignore */
+  }
+  return "IE";
+}
+
 function StepName({ name, setName }: { name: string; setName: (v: string) => void }) {
   const ref = useRef<HTMLInputElement>(null);
   const [country, setCountry] = useState("");
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => ref.current?.focus(), 250);
-    try {
-      const langs = [navigator.language, ...(navigator.languages ?? [])];
-      for (const l of langs) {
-        const m = l?.match(/[-_]([A-Z]{2})/i);
-        if (m) {
-          setCountry(m[1].toUpperCase());
-          break;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
+    setCountry(detectCountry());
     return () => clearTimeout(t);
   }, []);
+  const countryLabel =
+    COUNTRY_OPTIONS.find((o) => o.code === country)?.name ?? country;
   return (
     <div className="flex flex-1 flex-col justify-center">
       <div className="mb-6 grid h-16 w-16 place-items-center rounded-2xl gradient-primary text-primary-foreground shadow-float">
@@ -224,9 +270,39 @@ function StepName({ name, setName }: { name: string; setName: (v: string) => voi
         className="mt-8 h-14 w-full rounded-2xl border border-border bg-card px-4 text-base font-medium outline-none transition-colors focus:border-primary"
       />
       {country && (
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          We detected you're in <span className="font-semibold text-foreground">{country}</span> — we'll tailor emergency numbers and units automatically.
-        </p>
+        <div className="mt-3 text-[12px] text-muted-foreground">
+          {editing ? (
+            <div className="flex items-center gap-2">
+              <span>Country:</span>
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setEditing(false);
+                }}
+                className="h-9 flex-1 rounded-lg border border-border bg-card px-2 text-xs font-medium text-foreground outline-none focus:border-primary"
+              >
+                {COUNTRY_OPTIONS.map((o) => (
+                  <option key={o.code} value={o.code}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <p>
+              We think you're in{" "}
+              <span className="font-semibold text-foreground">{countryLabel}</span> — we'll tailor emergency numbers and units.{" "}
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="font-semibold text-primary hover:underline"
+              >
+                Not right?
+              </button>
+            </p>
+          )}
+        </div>
       )}
       <p className="mt-6 rounded-xl bg-muted/50 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
         Browsers can't read health data from your phone, so we keep this manual and quick — most steps are one tap or skippable.
@@ -234,6 +310,7 @@ function StepName({ name, setName }: { name: string; setName: (v: string) => voi
     </div>
   );
 }
+
 
 
 /* --------------------------- Step 2: Vitals --------------------------- */
