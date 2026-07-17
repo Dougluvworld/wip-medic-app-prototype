@@ -257,7 +257,7 @@ function Results() {
             <p className="mt-2 text-sm text-muted-foreground">{urgencyMap.nextBody}</p>
             <Link
               to="/care"
-              search={{ type: urgencyMap.careType }}
+              search={{ type: recommendation.types[0] }}
               className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft"
             >
               {urgencyMap.cta}
