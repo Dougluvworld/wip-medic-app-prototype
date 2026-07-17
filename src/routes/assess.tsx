@@ -215,6 +215,25 @@ function Assess() {
   };
 
 
+  // Escalate immediately if any user message already trips a red-flag rule —
+  // don't make someone with crushing chest pain wait for 5 more questions.
+  const checkAndEscalate = async (): Promise<boolean> => {
+    const s = assessmentStore.get();
+    const redFlag = detectRedFlag({
+      mainSymptom: s.mainSymptom,
+      severity: s.severity,
+      additional: s.additional,
+      answers: s.followUpAnswers,
+    });
+    if (!redFlag) return false;
+    assessmentStore.set({ redFlag });
+    await say(
+      "That sounds serious — I'm flagging this as urgent based on what you just told me. Let me show you what to do next.",
+    );
+    setPhase({ kind: "done" });
+    return true;
+  };
+
   const handleFreeText = async (raw: string) => {
     const text = raw.trim();
     if (!text) return;
@@ -227,6 +246,7 @@ function Assess() {
         bodyArea: detectBodyArea(text),
       });
       assessmentStore.addRawText(text);
+      if (await checkAndEscalate()) return;
       const s = assessmentStore.get();
       const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
       setFollowUps(ups);
@@ -237,6 +257,7 @@ function Assess() {
     if (phase.kind === "followup") {
       const q = followUps[phase.idx];
       assessmentStore.addFollowUp({ id: q.id, prompt: q.prompt, answer: text });
+      if (await checkAndEscalate()) return;
       const nextIdx = phase.idx + 1;
       if (nextIdx < followUps.length) await advance({ kind: "followup", idx: nextIdx });
       else await advance({ kind: "duration" });
@@ -251,10 +272,16 @@ function Assess() {
   };
 
   const handleSeverity = async (n: number) => {
+    setSeverityPicked(n);
     assessmentStore.set({ severity: n });
     setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text: `${n}/10` }]);
+    if (n >= 9) {
+      // severity 9-10 is itself a red flag — escalate now.
+      if (await checkAndEscalate()) return;
+    }
     await advance({ kind: "additional" });
   };
+
 
   const handleAdditional = async (chips: string[]) => {
     const list = chips.filter((c) => c !== "None");
