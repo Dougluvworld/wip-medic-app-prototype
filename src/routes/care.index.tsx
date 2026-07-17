@@ -10,7 +10,7 @@ import { careLabel } from "@/lib/care-labels";
 import { useAssessment } from "@/lib/assessment-store";
 import { scoreProvider } from "@/lib/care-recommendation";
 import { haversineKm, useUserLocation } from "@/lib/use-user-location";
-import { Clock, MapPin, MapPinOff, Navigation, Search, Sparkles, Star, X } from "lucide-react";
+import { Clock, MapPin, MapPinOff, Navigation, Search, Sparkles, Stethoscope, Star, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { isOpenNow, currentHoursLabel } from "@/lib/hours";
 
