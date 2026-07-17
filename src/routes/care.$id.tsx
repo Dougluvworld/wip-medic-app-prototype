@@ -2,6 +2,7 @@ import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ReviewCard } from "@/components/ReviewCard";
+import { ProviderMap } from "@/components/ProviderMap";
 import { providers } from "@/lib/mock-data";
 import { Calendar, CheckCircle2, Clock, MapPin, MessageSquare, Navigation, Phone, Share2, ShieldCheck, Star } from "lucide-react";
 import { useState } from "react";
