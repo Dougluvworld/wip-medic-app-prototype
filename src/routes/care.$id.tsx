@@ -46,7 +46,10 @@ function ProviderDetail() {
   const [booked, setBooked] = useState(false);
   const telHref = `tel:${p.phone.replace(/\s+/g, "")}`;
   const smsHref = `sms:${p.phone.replace(/\s+/g, "")}`;
-  const mapsHref = `https://maps.google.com/?q=${encodeURIComponent(p.address)}`;
+  const mapsHref =
+    typeof p.lat === "number" && typeof p.lng === "number"
+      ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`
+      : `https://maps.google.com/?q=${encodeURIComponent(p.address)}`;
   const breakdown = p.ratingBreakdown ?? { 5: 70, 4: 20, 3: 6, 2: 3, 1: 1 };
   const totalBreakdown = breakdown[5] + breakdown[4] + breakdown[3] + breakdown[2] + breakdown[1];
 
