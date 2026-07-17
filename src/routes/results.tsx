@@ -3,11 +3,13 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
-import { useAssessment } from "@/lib/assessment-store";
+import { assessmentStore, useAssessment } from "@/lib/assessment-store";
 import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { careLabel } from "@/lib/care-labels";
+import { recommendCareTypes } from "@/lib/care-recommendation";
 import { AlertTriangle, ChevronRight, Info, Phone, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 
 
 
