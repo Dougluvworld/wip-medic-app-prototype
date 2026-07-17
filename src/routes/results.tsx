@@ -215,6 +215,12 @@ function Results() {
     }
   };
 
+  const printSummary = () => {
+    if (typeof window === "undefined") return;
+    window.print();
+  };
+
+
   // Empty-state guard: user hit /results directly without running an assessment.
   const hasData = a.mainSymptom || a.aiResult || a.redFlag;
   if (!hasData) {
