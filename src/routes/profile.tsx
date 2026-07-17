@@ -3,7 +3,8 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Phone, Pencil, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { loadProfile, saveProfile } from "@/lib/profile-store";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -13,12 +14,17 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
-  const [allergies, setAllergies] = useState(["Penicillin", "Peanuts"]);
-  const [conditions, setConditions] = useState(["Asthma"]);
-  const [meds, setMeds] = useState(["Salbutamol inhaler"]);
+  const initial = typeof window !== "undefined" ? loadProfile() : {};
+  const [allergies, setAllergies] = useState<string[]>(initial.allergies ?? []);
+  const [conditions, setConditions] = useState<string[]>(initial.conditions ?? []);
+  const [meds, setMeds] = useState<string[]>(initial.medications ?? []);
   const [name, setName] = useState("Alex Morgan");
-  const [age, setAge] = useState("29");
-  const [gender, setGender] = useState("Non-binary");
+  const [age, setAge] = useState<string>(initial.age ?? "");
+  const [gender, setGender] = useState<string>(initial.gender ?? "Non-binary");
+
+  useEffect(() => {
+    saveProfile({ age, gender, conditions, medications: meds, allergies });
+  }, [age, gender, conditions, meds, allergies]);
 
   return (
     <PhoneFrame>
