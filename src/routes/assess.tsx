@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { Logo } from "@/components/ScreenHeader";
+import { ScreenHeader, Logo } from "@/components/ScreenHeader";
 import { assessmentStore } from "@/lib/assessment-store";
+import { pickFollowUps, detectRedFlag, type FollowUp } from "@/lib/follow-ups";
+import { runAssessment } from "@/lib/assessment.functions";
+import { loadProfile } from "@/lib/profile-store";
 import { ArrowUp, Mic, SkipForward } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/assess")({
   head: () => ({
@@ -19,16 +22,7 @@ export const Route = createFileRoute("/assess")({
 
 type Msg = { id: string; role: "assistant" | "user"; text: string };
 
-type FieldKey = "mainSymptom" | "bodyArea" | "duration" | "severity" | "additional";
-
-type Step = {
-  key: FieldKey;
-  prompt: (state: ReturnType<typeof assessmentStore.get>) => string;
-  apply: (raw: string) => void;
-  voiceSample: string;
-};
-
-// Map keywords in free-text to a canonical body area
+// Body area detection (silent — captured in background)
 const BODY_MAP: Array<{ re: RegExp; area: string }> = [
   { re: /stomach|belly|tummy|abdom|gut/i, area: "Abdomen" },
   { re: /chest|heart/i, area: "Chest" },
@@ -38,14 +32,7 @@ const BODY_MAP: Array<{ re: RegExp; area: string }> = [
   { re: /leg|knee|ankle|foot|feet|thigh/i, area: "Legs" },
   { re: /arm|shoulder|elbow|wrist|hand/i, area: "Arms" },
   { re: /skin|rash/i, area: "Skin" },
-  { re: /ear/i, area: "Ear" },
-  { re: /eye|vision/i, area: "Eye" },
-];
-
-const DURATION_RES: RegExp[] = [
-  /\b(?:since|for)\s+(?:the\s+)?(?:last\s+)?([a-z0-9\-\s]+?)(?=[.,]|$)/i,
-  /\b(a\s+few|several|couple of|about)?\s*\d+\s*(?:hour|hr|day|week|month|year)s?\s*(?:now|ago)?/i,
-  /\b(yesterday|today|this morning|last night|last week)\b/i,
+  { re: /cough/i, area: "Chest" },
 ];
 
 function detectBodyArea(text: string): string | null {
@@ -53,228 +40,245 @@ function detectBodyArea(text: string): string | null {
   return null;
 }
 
-function detectDuration(text: string): string | null {
-  for (const re of DURATION_RES) {
-    const m = text.match(re);
-    if (m) return m[0].replace(/^\s*(since|for)\s+/i, "").trim();
-  }
-  return null;
-}
+const DURATIONS = ["Under 24h", "1–3 days", "4–7 days", "1–2 weeks", "Over 2 weeks"];
 
-function detectSeverity(text: string): number | null {
-  const m = text.match(/\b(\d{1,2})\s*(?:\/|out of)\s*10\b/i) || text.match(/\b(?:around|about)?\s*(\d{1,2})\b/);
-  if (!m) return null;
-  const n = parseInt(m[1], 10);
-  if (isNaN(n) || n < 1 || n > 10) return null;
-  return n;
-}
+type Phase =
+  | { kind: "main" }
+  | { kind: "followup"; idx: number }
+  | { kind: "duration" }
+  | { kind: "severity" }
+  | { kind: "additional" }
+  | { kind: "thinking" }
+  | { kind: "done" };
 
-// Run every free-text answer through here to opportunistically fill later fields
-function autofill(text: string) {
-  const s = assessmentStore.get();
-  const patch: Partial<ReturnType<typeof assessmentStore.get>> = {};
-  if (!s.bodyArea) {
-    const area = detectBodyArea(text);
-    if (area) patch.bodyArea = area;
-  }
-  if (!s.duration) {
-    const dur = detectDuration(text);
-    if (dur) patch.duration = dur;
-  }
-  if (Object.keys(patch).length) assessmentStore.set(patch);
-}
-
-const steps: Step[] = [
-  {
-    key: "mainSymptom",
-    prompt: () => "Hi 👋 I'm Medi. Tell me what's been bothering you — describe it in your own words.",
-    apply: (raw) => {
-      assessmentStore.set({
-        mainSymptom: raw.split(/[.,\n]/)[0].slice(0, 60).trim() || raw.slice(0, 60),
-      });
-      autofill(raw);
-    },
-    voiceSample: "I've had a sore throat and a mild headache since yesterday",
-  },
-  {
-    key: "bodyArea",
-    prompt: () => "Thanks. Where in your body are you feeling this most?",
-    apply: (raw) => {
-      const detected = detectBodyArea(raw) ?? raw.slice(0, 40).trim();
-      assessmentStore.set({ bodyArea: detected });
-      autofill(raw);
-    },
-    voiceSample: "Mostly in my throat and forehead",
-  },
-  {
-    key: "duration",
-    prompt: () => "How long has this been going on?",
-    apply: (raw) => {
-      const d = detectDuration(raw) ?? raw.slice(0, 40).trim();
-      assessmentStore.set({ duration: d });
-    },
-    voiceSample: "About 2 days now",
-  },
-  {
-    key: "severity",
-    prompt: () => "On a scale of 1 to 10, how bad does it feel right now?",
-    apply: (raw) => {
-      const n = detectSeverity(raw);
-      assessmentStore.set({ severity: n ?? 5 });
-    },
-    voiceSample: "I'd say around a 6",
-  },
-  {
-    key: "additional",
-    prompt: () =>
-      "Last one — anything else you've noticed? Fever, nausea, fatigue, chills… or say 'nothing'.",
-    apply: (raw) => {
-      const list = raw
-        .toLowerCase()
-        .split(/,| and |\n/)
-        .map((s) => s.trim())
-        .filter((s) => s && s !== "nothing" && s !== "no" && s !== "none" && s.length < 30)
-        .map((s) => s[0].toUpperCase() + s.slice(1));
-      assessmentStore.set({ additional: list.slice(0, 6) });
-    },
-    voiceSample: "A bit of fever and fatigue",
-  },
-];
-
-function isAnswered(key: FieldKey, s: ReturnType<typeof assessmentStore.get>): boolean {
-  switch (key) {
-    case "mainSymptom": return !!s.mainSymptom;
-    case "bodyArea": return !!s.bodyArea;
-    case "duration": return !!s.duration;
-    // severity has a default (4) — always ask; additional is optional but always ask once
-    default: return false;
-  }
-}
-
-function nextUnansweredIdx(from: number): number {
-  const s = assessmentStore.get();
-  for (let i = from; i < steps.length; i++) {
-    if (!isAnswered(steps[i].key, s)) return i;
-  }
-  return steps.length;
-}
+const ADDITIONAL_CHIPS = ["Fever", "Chills", "Nausea", "Vomiting", "Dizziness", "Fatigue", "Rash", "None"];
 
 function Assess() {
   const nav = useNavigate();
+  const call = useServerFn(runAssessment);
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [stepIdx, setStepIdx] = useState(0);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(true);
   const [listening, setListening] = useState(false);
-  const [done, setDone] = useState(false);
+  const [phase, setPhase] = useState<Phase>({ kind: "main" });
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset store when entering the flow fresh
-  useEffect(() => {
-    assessmentStore.reset();
-  }, []);
+  useEffect(() => { assessmentStore.reset(); }, []);
 
-  // Post the assistant prompt for the current step
-  useEffect(() => {
-    if (stepIdx >= steps.length) return;
+  // Post an assistant message with a small typing delay
+  const say = (text: string) => {
     setTyping(true);
-    const t = setTimeout(() => {
-      const s = assessmentStore.get();
-      setMessages((m) => [
-        ...m,
-        { id: `a-${stepIdx}-${Date.now()}`, role: "assistant", text: steps[stepIdx].prompt(s) },
-      ]);
-      setTyping(false);
-      taRef.current?.focus();
-    }, 650);
-    return () => clearTimeout(t);
-  }, [stepIdx]);
-
-  // Auto-scroll
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, typing, done]);
-
-  const finish = () => {
-    setTyping(true);
-    setTimeout(() => {
-      const a = assessmentStore.get();
-      const recap = `Here's what I've got:\n\n• Symptom: ${a.mainSymptom ?? "—"}\n• Area: ${a.bodyArea ?? "—"}\n• Duration: ${a.duration ?? "—"}\n• Severity: ${a.severity}/10${
-        a.additional.length ? `\n• Other: ${a.additional.join(", ")}` : ""
-      }\n\nReady to see what this might mean?`;
-      setMessages((m) => [...m, { id: `a-recap-${Date.now()}`, role: "assistant", text: recap }]);
-      setTyping(false);
-      setDone(true);
-    }, 700);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setMessages((m) => [...m, { id: `a-${Date.now()}-${Math.random()}`, role: "assistant", text }]);
+        setTyping(false);
+        taRef.current?.focus();
+        resolve();
+      }, 550);
+    });
   };
 
-  const submit = (raw: string) => {
-    const text = raw.trim();
-    if (!text || done) return;
-    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text }]);
-    steps[stepIdx].apply(text);
-    setInput("");
+  // Kick off first prompt
+  useEffect(() => {
+    void say("Hi 👋 I'm Medi. Tell me what's been bothering you — describe it in your own words.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Auto-filled fields (body area, duration) are captured silently —
-    // skip straight to the next unanswered question without echoing them back.
-    const nextIdx = nextUnansweredIdx(stepIdx + 1);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, typing, phase]);
 
-    if (nextIdx >= steps.length) {
-      finish();
-    } else {
-      setStepIdx(nextIdx);
+  // Advance to a given phase and post its prompt
+  const advance = async (next: Phase) => {
+    setPhase(next);
+    if (next.kind === "followup") {
+      await say(followUps[next.idx].prompt);
+    } else if (next.kind === "duration") {
+      await say("How long has this been going on?");
+    } else if (next.kind === "severity") {
+      await say("On a scale of 1 to 10, how bad does it feel right now?");
+    } else if (next.kind === "additional") {
+      await say("Anything else you've noticed? Tap any that apply, or say 'none'.");
     }
   };
 
-  const skip = () => {
-    if (done) return;
-    submit(steps[stepIdx].voiceSample);
+  const finish = async () => {
+    setPhase({ kind: "thinking" });
+    const s = assessmentStore.get();
+
+    // Red-flag screen first — skips the AI call.
+    const redFlag = detectRedFlag({
+      mainSymptom: s.mainSymptom,
+      severity: s.severity,
+      additional: s.additional,
+      answers: s.followUpAnswers,
+    });
+    if (redFlag) {
+      assessmentStore.set({ redFlag });
+      await say("I'm flagging this as urgent based on what you told me. Let me show you what to do next.");
+      setPhase({ kind: "done" });
+      return;
+    }
+
+    await say("Thanks. Let me think this through…");
+
+    try {
+      const profile = loadProfile();
+      const result = await call({
+        data: {
+          mainSymptom: s.mainSymptom ?? "unspecified",
+          bodyArea: s.bodyArea,
+          duration: s.duration,
+          severity: s.severity,
+          additional: s.additional,
+          followUps: s.followUpAnswers.map((a) => ({ prompt: a.prompt, answer: a.answer })),
+          profile,
+        },
+      });
+      assessmentStore.set({ aiResult: result, aiError: null });
+      await say(`Got it. I've put together an assessment — top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
+    } catch (err) {
+      assessmentStore.set({ aiError: err instanceof Error ? err.message : "Assessment failed" });
+      await say("I hit a snag reasoning about this — I'll fall back to a basic assessment on the next screen.");
+    }
+    setPhase({ kind: "done" });
   };
+
+  const handleFreeText = async (raw: string) => {
+    const text = raw.trim();
+    if (!text) return;
+    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text }]);
+    setInput("");
+
+    if (phase.kind === "main") {
+      assessmentStore.set({
+        mainSymptom: text.split(/[.,\n]/)[0].slice(0, 60).trim() || text.slice(0, 60),
+        bodyArea: detectBodyArea(text),
+      });
+      const s = assessmentStore.get();
+      const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
+      setFollowUps(ups);
+      await advance({ kind: "followup", idx: 0 });
+      return;
+    }
+
+    if (phase.kind === "followup") {
+      const q = followUps[phase.idx];
+      assessmentStore.addFollowUp({ id: q.id, prompt: q.prompt, answer: text });
+      const nextIdx = phase.idx + 1;
+      if (nextIdx < followUps.length) await advance({ kind: "followup", idx: nextIdx });
+      else await advance({ kind: "duration" });
+      return;
+    }
+
+    if (phase.kind === "duration") {
+      assessmentStore.set({ duration: text });
+      await advance({ kind: "severity" });
+      return;
+    }
+  };
+
+  const handleSeverity = async (n: number) => {
+    assessmentStore.set({ severity: n });
+    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text: `${n}/10` }]);
+    await advance({ kind: "additional" });
+  };
+
+  const handleAdditional = async (chips: string[]) => {
+    const list = chips.filter((c) => c !== "None");
+    assessmentStore.set({ additional: list });
+    setMessages((m) => [
+      ...m,
+      { id: `u-${Date.now()}`, role: "user", text: list.length ? list.join(", ") : "Nothing else" },
+    ]);
+    await finish();
+  };
+
+  const handleDuration = async (d: string) => {
+    assessmentStore.set({ duration: d });
+    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text: d }]);
+    await advance({ kind: "severity" });
+  };
+
+  const currentVoiceSample = useMemo(() => {
+    if (phase.kind === "main") return "I've had a sore throat and a mild headache since yesterday";
+    if (phase.kind === "followup") return followUps[phase.idx]?.voiceSample ?? "";
+    if (phase.kind === "duration") return "About 2 days";
+    return "";
+  }, [phase, followUps]);
 
   const startMockListen = () => {
-    if (done) return;
     setListening(true);
     setTimeout(() => {
-      setInput(steps[stepIdx].voiceSample);
+      setInput(currentVoiceSample);
       setListening(false);
-
       taRef.current?.focus();
-    }, 1400);
+    }, 1200);
   };
 
-  const progress = done ? 100 : ((stepIdx) / steps.length) * 100;
+  const skip = () => currentVoiceSample && handleFreeText(currentVoiceSample);
+
+  // Total steps for progress bar: main + followups + duration + severity + additional
+  const totalSteps = 1 + followUps.length + 3;
+  const completedSteps =
+    phase.kind === "main" ? 0 :
+    phase.kind === "followup" ? 1 + phase.idx :
+    phase.kind === "duration" ? 1 + followUps.length :
+    phase.kind === "severity" ? 2 + followUps.length :
+    phase.kind === "additional" ? 3 + followUps.length :
+    totalSteps;
+  const progress = (completedSteps / Math.max(totalSteps, 1)) * 100;
+
+  const showTextInput = phase.kind === "main" || phase.kind === "followup" ||
+    (phase.kind === "duration" && false); // duration uses chips
+  const showDurationChips = phase.kind === "duration";
+  const showSeverity = phase.kind === "severity";
+  const showAdditional = phase.kind === "additional";
+  const showDone = phase.kind === "done";
+  const showThinking = phase.kind === "thinking";
 
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
         <ScreenHeader
           title="Symptom check"
-          subtitle={done ? "Summary" : `Question ${Math.min(stepIdx + 1, steps.length)} of ${steps.length}`}
+          subtitle={showDone ? "Summary" : showThinking ? "Analysing…" : `Step ${Math.min(completedSteps + 1, totalSteps)} of ${totalSteps}`}
           back="/home"
         />
 
         <div className="px-5 pt-3">
           <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full gradient-primary transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full gradient-primary transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
-        {/* Chat scroll area */}
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
           {messages.map((m) =>
-            m.role === "assistant" ? (
-              <AssistantBubble key={m.id} text={m.text} />
-            ) : (
-              <UserBubble key={m.id} text={m.text} />
-            ),
+            m.role === "assistant" ? <AssistantBubble key={m.id} text={m.text} /> : <UserBubble key={m.id} text={m.text} />,
           )}
           {typing && <TypingBubble />}
 
-          {done && (
+          {showDurationChips && !typing && (
+            <div className="flex flex-wrap gap-2 pl-10">
+              {DURATIONS.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => handleDuration(d)}
+                  className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium hover:border-primary/40 hover:bg-accent"
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} />}
+
+          {showAdditional && !typing && <AdditionalPicker onDone={handleAdditional} />}
+
+          {showDone && (
             <div className="animate-fade-in-up pt-2">
               <button
                 onClick={() => nav({ to: "/results" })}
@@ -289,22 +293,17 @@ function Assess() {
           )}
         </div>
 
-        {/* Composer */}
-        {!done && (
+        {showTextInput && !showDone && !showThinking && (
           <div className="sticky bottom-0 border-t border-border/60 bg-background/90 px-3 pb-4 pt-3 backdrop-blur">
             <div className="flex items-end gap-2">
               <button
                 onClick={startMockListen}
                 aria-label="Voice input (demo)"
                 className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-full border transition ${
-                  listening
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-foreground hover:border-primary/40"
+                  listening ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-primary/40"
                 }`}
               >
-                {listening && (
-                  <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
-                )}
+                {listening && <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />}
                 <Mic className="relative h-5 w-5" />
               </button>
 
@@ -316,7 +315,7 @@ function Assess() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      submit(input);
+                      handleFreeText(input);
                     }
                   }}
                   placeholder={listening ? "Listening…" : "Type your reply…"}
@@ -326,7 +325,7 @@ function Assess() {
               </div>
 
               <button
-                onClick={() => submit(input)}
+                onClick={() => handleFreeText(input)}
                 disabled={!input.trim()}
                 aria-label="Send"
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-full gradient-primary text-primary-foreground shadow-soft transition disabled:opacity-40 active:scale-95"
@@ -335,13 +334,14 @@ function Assess() {
               </button>
             </div>
 
-            <button
-              onClick={skip}
-              className="mx-auto mt-2 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-            >
-              <SkipForward className="h-3 w-3" />
-              Use example answer
-            </button>
+            {currentVoiceSample && (
+              <button
+                onClick={skip}
+                className="mx-auto mt-2 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                <SkipForward className="h-3 w-3" /> Use example answer
+              </button>
+            )}
           </div>
         )}
 
@@ -351,15 +351,73 @@ function Assess() {
   );
 }
 
+function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
+  return (
+    <div className="pl-10">
+      <div className="grid grid-cols-10 gap-1.5">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+          <button
+            key={n}
+            onClick={() => onPick(n)}
+            className={`h-11 rounded-lg text-sm font-semibold transition ${
+              n <= 3 ? "bg-success/15 text-success hover:bg-success/25" :
+              n <= 6 ? "bg-warning/20 text-warning-foreground hover:bg-warning/30" :
+              "bg-destructive/15 text-destructive hover:bg-destructive/25"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+        <span>Mild</span><span>Severe</span>
+      </div>
+    </div>
+  );
+}
+
+function AdditionalPicker({ onDone }: { onDone: (chips: string[]) => void }) {
+  const [picked, setPicked] = useState<string[]>([]);
+  const toggle = (c: string) => {
+    if (c === "None") { setPicked(["None"]); return; }
+    setPicked((p) => {
+      const next = p.filter((x) => x !== "None");
+      return next.includes(c) ? next.filter((x) => x !== c) : [...next, c];
+    });
+  };
+  return (
+    <div className="pl-10">
+      <div className="flex flex-wrap gap-2">
+        {ADDITIONAL_CHIPS.map((c) => {
+          const on = picked.includes(c);
+          return (
+            <button
+              key={c}
+              onClick={() => toggle(c)}
+              className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${
+                on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40"
+              }`}
+            >
+              {c}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        onClick={() => onDone(picked.length ? picked : ["None"])}
+        className="mt-3 h-11 rounded-2xl gradient-primary px-5 text-sm font-semibold text-primary-foreground shadow-soft"
+      >
+        Continue
+      </button>
+    </div>
+  );
+}
+
 function AssistantBubble({ text }: { text: string }) {
   return (
     <div className="flex animate-fade-in-up items-start gap-2.5">
-      <div className="mt-0.5 shrink-0">
-        <Logo size={28} />
-      </div>
-      <div className="max-w-[78%] whitespace-pre-line pt-1 text-sm leading-6 text-foreground">
-        {text}
-      </div>
+      <div className="mt-0.5 shrink-0"><Logo size={28} /></div>
+      <div className="max-w-[78%] whitespace-pre-line pt-1 text-sm leading-6 text-foreground">{text}</div>
     </div>
   );
 }
@@ -377,9 +435,7 @@ function UserBubble({ text }: { text: string }) {
 function TypingBubble() {
   return (
     <div className="flex items-start gap-2.5">
-      <div className="mt-0.5 shrink-0">
-        <Logo size={28} />
-      </div>
+      <div className="mt-0.5 shrink-0"><Logo size={28} /></div>
       <div className="flex items-center gap-1 rounded-full bg-muted px-3.5 py-2.5">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.3s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.15s]" />
