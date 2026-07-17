@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { THEME_STORAGE_KEY, useTheme } from "@/hooks/useTheme";
 
-const DARK_KEY = "medi-care.dark";
+const DARK_KEY = THEME_STORAGE_KEY;
 const NOTIFS_KEY = "medi-care.notifs";
 const APP_KEYS = [
   "medi-care.profile",
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-  const [dark, setDark] = useState(false);
+  const { isDark, choice, setTheme } = useTheme();
   const [notifs, setNotifs] = useState(true);
   const [ready, setReady] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -47,7 +48,6 @@ function SettingsPage() {
   // Hydrate from localStorage after mount to avoid SSR mismatch.
   useEffect(() => {
     try {
-      setDark(window.localStorage.getItem(DARK_KEY) === "1");
       const n = window.localStorage.getItem(NOTIFS_KEY);
       if (n !== null) setNotifs(n === "1");
     } catch {
@@ -55,12 +55,6 @@ function SettingsPage() {
     }
     setReady(true);
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    document.documentElement.classList.toggle("dark", dark);
-    try { window.localStorage.setItem(DARK_KEY, dark ? "1" : "0"); } catch { /* ignore */ }
-  }, [dark, ready]);
 
   useEffect(() => {
     if (!ready) return;
