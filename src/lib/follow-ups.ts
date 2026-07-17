@@ -66,13 +66,15 @@ const AREA_ALIASES: Record<string, string> = {
   cough: "cough",
 };
 
-export function pickFollowUps(mainSymptom: string | null, bodyArea: string | null): FollowUp[] {
+export function pickFollowUps(mainSymptom: string | null, bodyArea: string | null, priorText = ""): FollowUp[] {
   const hay = `${mainSymptom ?? ""} ${bodyArea ?? ""}`.toLowerCase();
+  const context = `${mainSymptom ?? ""} ${priorText}`;
   for (const [key, group] of Object.entries(AREA_ALIASES)) {
-    if (hay.includes(key)) return FOLLOWUPS[group];
+    if (hay.includes(key)) return FOLLOWUPS[group].filter((f) => !f.skipIf || !f.skipIf.test(context));
   }
   return FOLLOWUPS.generic;
 }
+
 
 // Red-flag rules. Return the first triggered reason.
 export function detectRedFlag(input: {
