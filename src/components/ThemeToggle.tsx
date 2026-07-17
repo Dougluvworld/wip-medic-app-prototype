@@ -2,8 +2,8 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 
 /**
- * Floating top-right theme toggle. Absolutely positioned inside PhoneFrame,
- * so it appears on every screen without affecting page layout.
+ * Floating top-right theme toggle for the first landing screen.
+ * Absolutely positioned so it does not affect page layout.
  */
 export function ThemeToggle() {
   const { isDark, toggle, ready } = useTheme();
