@@ -58,7 +58,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 // Runs before hydration so dark-mode users don't get a flash of light theme.
-const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('medi-care.dark');if(t==='1'){document.documentElement.classList.add('dark');}}catch(e){}`;
+// Honours system preference when no explicit choice is stored.
+const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('medi-care.dark');var d=t==='1'||(t===null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}`;
 
 const JSON_LD_ORG = {
   "@context": "https://schema.org",
