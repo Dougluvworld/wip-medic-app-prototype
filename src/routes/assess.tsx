@@ -303,7 +303,17 @@ function Assess() {
 
           {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} />}
 
-          {showAdditional && !typing && <AdditionalPicker onDone={handleAdditional} />}
+          {showAdditional && !typing && (
+            <AdditionalPicker
+              onDone={handleAdditional}
+              options={filterChips(
+                [
+                  assessmentStore.get().mainSymptom ?? "",
+                  ...assessmentStore.get().followUpAnswers.map((a) => a.answer),
+                ].join(" "),
+              )}
+            />
+          )}
 
           {showDone && (
             <div className="animate-fade-in-up pt-2">
