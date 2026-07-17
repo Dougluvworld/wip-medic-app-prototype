@@ -1,26 +1,33 @@
 ## Goal
-Make the bottom navigation stay visible at the bottom of the screen while the user scrolls, and ensure scrollable content clears the nav so nothing is hidden.
 
-## Current state
-- `BottomNav` already uses `sticky bottom-0`.
-- Each page is wrapped in `PhoneFrame`, whose inner `div` is the actual scroll container (`overflow-y-auto`).
-- The nav is the last child of a `min-h-full flex-col` inside that scroll container.
-- Long pages (e.g. Profile) scroll, so the nav could potentially be lost if sticky behaviour fails or if content ends exactly behind it.
+Add a small theme toggle in the top-right of the app so users can flip between light and dark without hunting through Settings. Default to the OS/system setting so first launch at night opens dark automatically.
 
-## Proposed changes
-1. **Convert `BottomNav` from `sticky` to `fixed` positioning** inside `PhoneFrame`’s scroll context, so it is reliably pinned to the bottom of the viewport/device frame regardless of which page is rendered.
-2. **Add bottom safe-area padding** to the scrollable page content so the last form field/card/tip is not obscured by the nav.
-3. **Keep the existing nav order and styling** (`Home · Care · [Assess FAB] · Profile · Settings`, fixed row height, centred FAB, active states).
-4. **Verify across tabs** (Home, Profile, Care, Settings) that the nav stays put and content scrolls cleanly behind it.
+## Behaviour
+
+- **Default (no user choice yet):** follow `prefers-color-scheme`. If the OS is dark, the app opens dark; if light, it opens light. Live-updates if the OS theme changes.
+- **User taps the toggle:** overrides the system preference and persists their choice (light or dark). Reflected everywhere immediately.
+- **Settings dark-mode row:** stays in sync with the toggle. Add a small "Use system" reset control there so users can return to the system-follow default.
+- **No flash on load:** the pre-hydration script in `__root.tsx` is updated to apply dark if either the stored choice is dark OR (no stored choice AND system prefers dark).
+
+## UI placement
+
+- A single icon-only button (sun/moon from lucide) pinned to the top-right of the phone frame, above page content.
+- Lives in `PhoneFrame` so it appears on every screen (Home, Care, Assess, Profile, Settings, Onboarding) without each route re-adding it.
+- Sits inside the safe-area, ~12px from the top and right edges, with a subtle translucent background so it reads over any header art but doesn't compete with page titles.
+- 40x40 tap target, aria-label toggles between "Switch to dark mode" / "Switch to light mode".
 
 ## Technical notes
-- `BottomNav` lives in `src/components/BottomNav.tsx`.
-- `PhoneFrame` lives in `src/components/PhoneFrame.tsx`.
-- The change is purely presentational; no business logic or route changes.
-- On desktop the device frame is `md:max-h-[900px] md:overflow-hidden`, so fixed positioning must be relative to that frame, not the full viewport.
 
-## Acceptance criteria
-- Nav remains visible while scrolling on all main tabs.
-- Last piece of content on each page is fully readable above the nav.
-- No layout shift or jump when switching tabs.
-- Typecheck passes.
+- New `useTheme` hook centralises: read stored choice, fall back to `matchMedia('(prefers-color-scheme: dark)')`, expose `{ isDark, setTheme('light'|'dark'|'system') }`, toggle the `dark` class on `<html>`, persist to `medi-care.dark` with values `"1" | "0" | null` (null = follow system).
+- Update `THEME_INIT_SCRIPT` in `src/routes/__root.tsx` to honour system preference when the stored value is missing.
+- Refactor `settings.tsx` to consume the hook instead of owning its own state, and add a small "Follow system" text button next to the Dark mode row.
+- Add `ThemeToggle` component and render it inside `PhoneFrame` as an absolutely-positioned overlay so it doesn't affect page layout.
+- Purely presentational + client state; no routing, data, or business logic changes.
+
+## Files touched
+
+- `src/hooks/useTheme.ts` (new)
+- `src/components/ThemeToggle.tsx` (new)
+- `src/components/PhoneFrame.tsx` (mount the toggle)
+- `src/routes/__root.tsx` (upgrade pre-hydration script)
+- `src/routes/settings.tsx` (use the hook, add "Follow system")
