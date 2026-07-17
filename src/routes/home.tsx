@@ -36,6 +36,8 @@ function Home() {
   const [name, setName] = useState<string>("there");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [tip, setTip] = useState<string>("");
+  const [ecName, setEcName] = useState<string>("");
+  const [ecPhone, setEcPhone] = useState<string>("");
 
   useEffect(() => {
     const profile = loadProfile();
@@ -43,7 +45,18 @@ function Home() {
     setName(first || "there");
     setHistory(loadHistory());
     setTip(dailyTip(profile));
+    setEcName((profile.emergencyContact?.name ?? "").trim());
+    setEcPhone((profile.emergencyContact?.phone ?? "").trim());
   }, []);
+
+  const hasContact = ecPhone.length > 0;
+  const sosHref = hasContact ? `tel:${ecPhone}` : `tel:${emergency.number}`;
+  const sosLabel = hasContact
+    ? `Call ${ecName || "contact"}`
+    : `SOS ${emergency.number}`;
+  const sosAria = hasContact
+    ? `Call emergency contact ${ecName || ecPhone}`
+    : `Call emergency number ${emergency.number}`;
 
   return (
     <PhoneFrame>
@@ -57,14 +70,14 @@ function Home() {
               <p className="text-base font-semibold">{name}</p>
             </div>
           </div>
-          {/* Compact emergency call pill — high-visibility, low real estate */}
+          {/* Compact emergency call pill — dials the user's saved contact when available */}
           <a
-            href={`tel:${emergency.number}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
-            aria-label={`Call emergency number ${emergency.number}`}
+            href={sosHref}
+            className="inline-flex max-w-[55%] items-center gap-1.5 truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
+            aria-label={sosAria}
           >
-            <Phone className="h-3.5 w-3.5" />
-            SOS {emergency.number}
+            <Phone className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{sosLabel}</span>
           </a>
         </header>
 

@@ -9,6 +9,7 @@ import { useTravelState } from "@/lib/travel-mode";
 import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
 import { saveHistoryEntry } from "@/lib/history-store";
+import { loadProfile } from "@/lib/profile-store";
 import { AlertTriangle, Copy, Info, Phone, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -171,8 +172,14 @@ function Results() {
 
   // Persist recommendation for /care AND save a history entry once.
   const [saved, setSaved] = useState(false);
+  const [ec, setEc] = useState<{ name: string; phone: string }>({ name: "", phone: "" });
   useEffect(() => {
     assessmentStore.set({ careRecommendation: recommendation });
+    const p = loadProfile();
+    setEc({
+      name: (p.emergencyContact?.name ?? "").trim(),
+      phone: (p.emergencyContact?.phone ?? "").trim(),
+    });
     if (!saved && (a.mainSymptom || a.redFlag)) {
       saveHistoryEntry({
         mainSymptom: a.mainSymptom ?? "Symptom check",
@@ -184,6 +191,7 @@ function Results() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urgency, a.redFlag]);
+  const hasEc = ec.phone.length > 0;
 
   const copySummary = async () => {
     const lines = [
@@ -290,6 +298,15 @@ function Results() {
               >
                 <Phone className="h-4 w-4" /> Call {emergency.number} now
               </a>
+              {hasEc && (
+                <a
+                  href={`tel:${ec.phone}`}
+                  className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/40 bg-card text-sm font-semibold text-destructive hover:bg-destructive/5"
+                  aria-label={`Call emergency contact ${ec.name || ec.phone}`}
+                >
+                  <Phone className="h-4 w-4" /> Call {ec.name || "emergency contact"}
+                </a>
+              )}
             </div>
           )}
 
@@ -311,23 +328,36 @@ function Results() {
           )}
 
           {urgency === "High" && !a.redFlag && (
-            <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-destructive">
-                  If life-threatening, call {emergency.number} now.
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Chest pain, difficulty breathing, sudden weakness, severe bleeding.
-                </p>
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-destructive">
+                    If life-threatening, call {emergency.number} now.
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Chest pain, difficulty breathing, sudden weakness, severe bleeding.
+                  </p>
+                </div>
               </div>
-              <a
-                href={`tel:${emergency.number}`}
-                aria-label={`Call ${emergency.number}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft"
-              >
-                <Phone className="h-3 w-3" /> Call {emergency.number}
-              </a>
+              <div className={`mt-3 grid gap-2 ${hasEc ? "grid-cols-2" : "grid-cols-1"}`}>
+                <a
+                  href={`tel:${emergency.number}`}
+                  aria-label={`Call ${emergency.number}`}
+                  className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-destructive text-xs font-semibold text-destructive-foreground shadow-soft"
+                >
+                  <Phone className="h-3.5 w-3.5" /> Call {emergency.number}
+                </a>
+                {hasEc && (
+                  <a
+                    href={`tel:${ec.phone}`}
+                    aria-label={`Call emergency contact ${ec.name || ec.phone}`}
+                    className="flex h-11 items-center justify-center gap-1.5 rounded-2xl border border-destructive/40 bg-card text-xs font-semibold text-destructive hover:bg-destructive/5"
+                  >
+                    <Phone className="h-3.5 w-3.5" /> Call {ec.name || "contact"}
+                  </a>
+                )}
+              </div>
             </div>
           )}
 

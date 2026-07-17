@@ -1,73 +1,57 @@
+## Effortless sign-up + wired-in emergency contact
 
-# Apply full app review — implementation plan
+Replace the current 3-slide intro with a 3-step onboarding wizard that collects only what changes triage, plus an emergency contact that we actually use in the app. No auth, all `localStorage` (matches the current demo model).
 
-I'll ship the whole review in three passes. Each pass is self-contained and leaves the app in a working state.
+## Flow
 
-## Pass 1 — Trust & correctness (remove/fix fake affordances)
+```text
+Splash → 1. You (name)  → 2. Vitals (DOB, sex, allergies)  → 3. Emergency contact → /home
+         autofocus         all optional, single screen        Android Contact Picker
+         Skip →            Skip →                             or 2 fields · Skip →
+```
 
-- **Splash** (`src/routes/index.tsx`): if `localStorage.mediCareOnboarded === "1"`, redirect to `/home`. Collapse "Sign In" + "Create Account" into a single "Get started" CTA (keeps "Continue as Guest"). Set the flag when onboarding completes.
-- **Home** (`src/routes/home.tsx`):
-  - Read name from profile store; fall back to "there".
-  - Remove the mock "Recent assessments" list until real history exists; replace with a compact "Start your first check-in" empty state (or, if `localStorage` has past AI results, render those — see Pass 3).
-  - Remove the dead "See all" button.
-  - Rotate daily tip from a small pool keyed to the day-of-year.
-  - Demote emergency banner to a slim pinned pill so the primary CTA is unmissable.
-- **Assess** (`src/routes/assess.tsx`):
-  - Remove the fake mic button (it just types a canned string). Keep only the send button.
-  - Gate "Use example answer" behind `?demo=1` search param.
-  - Add a 25s timeout + one-tap "Retry" on the AI call.
-  - Switch the progress bar to an indeterminate "Analysing…" state during `thinking`/red-flag branches.
-- **Results** (`src/routes/results.tsx`):
-  - Convert AI-error notice from tiny grey footer to a visible banner at the top of the content.
-  - Remove the duplicate bottom "Find care near me" link (keep the single urgency CTA).
-  - Replace numeric confidence % with a qualitative label ("More likely / Possible / Less likely"); keep the % only inside the expanded reasoning line.
-  - Add a "Copy summary" button (copies urgency + top 3 conditions + next step to clipboard) with a `Copied ✓` toast.
-- **Profile** (`src/routes/profile.tsx`):
-  - Persist `name` to profile store; read it on mount.
-  - Add subtle inline "Saved ✓" indicator after any change (2s fade).
-  - Remove hardcoded emergency contact; replace with editable single-contact card (name + relationship + phone) persisted in profile store.
-  - Add "Blood type" and "GP / doctor name" fields.
-- **Settings** (`src/routes/settings.tsx`):
-  - Persist dark mode to `localStorage` and read on mount (in `useEffect` to avoid hydration mismatch).
-  - Hide the placeholder rows (Language, Privacy, Medical data, Support) behind a "Coming soon" tag OR remove them — I'll tag them "Coming soon" and disable clicks so the settings page still looks populated.
-  - Rename "Sign out" → "Reset demo" (clears localStorage + navigates to `/`).
+Progress dots at top of every step. Every step has a **Skip** link that jumps straight to `/home` (still marks onboarded).
 
-## Pass 2 — Core-flow UX
+### Step 1 — You
+- Single input: **Name** (autofocused, `autocomplete="given-name"`).
+- Continue button, Skip link.
 
-- **Bottom nav** (`src/components/BottomNav.tsx`): 5-slot layout with a raised center FAB for Assess (larger circle, gradient, elevated shadow). Home / Care flank left; Profile / Settings flank right. Move Settings into the nav so it's reachable everywhere; drop the Settings gear from Home header.
-- **Show bottom nav consistently**: audit `care.$id.tsx` and any other deep screens; render `<BottomNav />` everywhere except splash + onboarding.
-- **ScreenHeader back**: change `back` prop to support "auto" — uses `router.history.back()` with fallback path. Update Care detail and Results to use auto-back.
-- **Assess edit-answer**: each user bubble gets a small pencil affordance → rewinds `messages` + `phase` to that step; profile/state carried forward is recomputed from remaining answers.
-- **Care list** (`src/routes/care.index.tsx`):
-  - When the recommendation banner shows, drop the auto-selected chip highlight (one signal, not two).
-  - Add "Opens at HH:MM" hint to closed cards (using `hours.ts`).
-  - Add empty state when filters return 0 providers (illustration + "Clear filters" button).
-  - Location: on first visit show a small "Enable location for accurate distances" prompt above the map, with a Grant button; remember dismissal in localStorage.
-- **Care detail** (`src/routes/care.$id.tsx`): sticky bottom action bar with `[Call] [Directions] [Book]`. Label reviews section "Sample reviews" until real.
-- **Page transitions**: add fade + slight slide on `<Outlet />` swap in `__root.tsx` using CSS keyframes (no framer-motion dep needed).
+### Step 2 — A few vitals (all optional)
+- **Date of birth** — native `<input type="date">` (mobile OSes render wheel pickers).
+- **Biological sex** — segmented control: Female / Male / Other / Prefer not to say.
+- **Known allergies** — preset chips (Penicillin, Peanuts, Latex, Shellfish, Ibuprofen, None) + free-text add.
 
-## Pass 3 — Depth
+### Step 3 — Emergency contact
+- If `navigator.contacts` supported → big **"Pick from contacts"** button (Android). On success, name + phone auto-fill.
+- Always available: two fields — **Name** (`autocomplete="name"`) and **Phone** (`autocomplete="tel"`, `inputmode="tel"`) so iOS keyboard suggests contacts.
+- Optional **Relationship** chip (Partner, Parent, Sibling, Friend, Other).
+- Small privacy line: "Stored only on this device. You can remove it any time in Profile."
 
-- **Persist assessment history**: on results mount, append `{id, date, mainSymptom, urgency, topCondition}` to `localStorage.mediCareHistory` (cap 20). Wire Home's "Recent assessments" to read from it. Add a `/history` route with the full list; each item routes to a new `/results/$id` that reads that snapshot.
-- **Personalised daily tip**: if profile has conditions/allergies, prefer a tip from a matching pool (e.g. "asthma → pollen check"); otherwise generic.
-- **Accessibility sweep**: `aria-label` on every icon-only button (mic — now removed —, pencil, edit, share, dismiss, close, back). Ensure severity picker is a `role="radiogroup"` with arrow-key navigation. Replace colour-only urgency cues on the severity picker with a small text label per band.
-- **Loading skeletons**: skeleton cards for the AI thinking state on Results (if user lands on `/results` while `aiResult` is still null, e.g. deep-link) and for the map tile while location is being fetched.
+## Wiring so the contact earns its place
 
-## Technical notes
+- **Home header SOS pill** — when `emergencyContact.phone` exists, the pill's label becomes "Call [Name]" and `href="tel:..."` dials the contact. When empty, keeps the current country emergency number (999/911/112).
+- **Results high-urgency band** — when `urgency === "High"` and a contact exists, add a secondary "Call [Name]" button next to the existing emergency-number call button.
 
-- All persistence uses `localStorage` (matches existing pattern in `profile-store.ts`, `travel-mode.ts`). Cloud not enabled — I won't wire it unless you ask.
-- No new npm deps. Toast for "Saved ✓" / "Copied ✓" uses a tiny local component (fixed-position, auto-dismiss) to avoid pulling in a toast lib if one isn't already wired.
-- Profile store gains: `name`, `bloodType`, `gpName`, `emergencyContact: { name, relationship, phone }`. Migration: existing keys read unchanged; new fields default to empty.
-- The center-FAB nav means Assess is no longer a peer route in the grid — I'll implement it as a 5-column grid with slot 3 elevated; active state still highlights correctly on all routes.
-- Page transitions are pure CSS (`@keyframes fade-slide-in`) applied to a route-keyed wrapper — no layout thrash on TanStack's default routing.
+That's it — no new screens, no shareable ICE card, no SMS. Two small surface changes so the field isn't dead weight.
 
-## What I will NOT do (unless you ask)
+## Files
 
-- Wire real authentication / Lovable Cloud (mentioned as a follow-up in the review).
-- Wire real Web Speech API voice input (removed instead — safer than half-real).
-- Build a "Share as PDF" export (Copy summary covers 90% of the use case with none of the complexity).
-- Build stubs for Language / Privacy / Medical data / Support pages (marked "Coming soon" instead).
+- **Rewrite** `src/routes/onboarding.tsx` — 3-step wizard with progress dots + Skip. Uses `zod` for form validation.
+- **New** `src/lib/contact-picker.ts` — typed wrapper around `navigator.contacts.select` with feature detection.
+- **Update** `src/lib/profile-store.ts` — add `dob` field; clear the fake defaults ("Alex Morgan", "Asthma", etc.) so a new user starts blank.
+- **Update** `src/routes/home.tsx` — SOS pill reads `emergencyContact` and swaps label + `tel:` target when present.
+- **Update** `src/routes/results.tsx` — high-urgency band renders extra "Call [Name]" button when contact exists.
 
-## Rollout order
+No new npm packages (`zod` already installed).
 
-I'll ship the passes in order, each as one implementation batch. If you want a smaller first cut, say "just Pass 1" and I'll stop there.
+## Validation
+
+- `zod` schema: name ≤ 60 chars, phone `^[+\d\s\-()]{5,20}$`, allergies ≤ 10 items × 40 chars.
+- Manual pass: clear localStorage → splash → onboarding → skip all 3 → land on `/home` with no personal data leaked. Repeat filling every field → Home pill flips to "Call [Name]" → run a High-urgency assessment → Results shows both call buttons.
+
+## Explicit non-goals
+
+- No real auth / Google / Apple.
+- No Apple Health / Google Fit (not available on web).
+- No auto-SMS, no shareable ICE lockscreen card.
+- No Lovable Cloud — everything stays in `localStorage`.
