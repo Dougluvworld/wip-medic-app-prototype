@@ -8,6 +8,7 @@ export type EmergencyContact = {
 
 export type HealthProfile = {
   name?: string;
+  dob?: string; // ISO YYYY-MM-DD
   age?: string;
   gender?: string;
   bloodType?: string;
@@ -21,14 +22,15 @@ export type HealthProfile = {
 const KEY = "medi-care.profile";
 
 const defaults: HealthProfile = {
-  name: "Alex Morgan",
-  age: "29",
-  gender: "Non-binary",
+  name: "",
+  dob: "",
+  age: "",
+  gender: "",
   bloodType: "",
   gpName: "",
-  conditions: ["Asthma"],
-  medications: ["Salbutamol inhaler"],
-  allergies: ["Penicillin", "Peanuts"],
+  conditions: [],
+  medications: [],
+  allergies: [],
   emergencyContact: { name: "", relationship: "", phone: "" },
 };
 
