@@ -10,7 +10,7 @@ import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
 import { saveHistoryEntry } from "@/lib/history-store";
 import { loadProfile } from "@/lib/profile-store";
-import { AlertTriangle, Copy, Info, Phone, Sparkles } from "lucide-react";
+import { AlertTriangle, Copy, Info, Phone, Printer, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
