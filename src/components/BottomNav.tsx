@@ -1,13 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Stethoscope, MapPin, User, Settings } from "lucide-react";
 
-const sideItems = [
+const leftItems = [
   { to: "/home", label: "Home", icon: Home },
-  { to: "/care", label: "Care", icon: MapPin },
+  { to: "/profile", label: "Profile", icon: User },
 ] as const;
 
 const rightItems = [
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/care", label: "Care", icon: MapPin },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -18,19 +18,17 @@ export function BottomNav() {
 
   return (
     <nav className="sticky bottom-0 z-30 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
-      <ul className="relative grid grid-cols-5 items-end px-2 pt-1.5 pb-1">
-        {sideItems.map(({ to, label, icon: Icon }) => (
+      <ul className="relative grid h-16 grid-cols-5 items-center px-2">
+        {leftItems.map(({ to, label, icon: Icon }) => (
           <NavItem key={to} to={to} label={label} Icon={Icon} active={isActive(to)} />
         ))}
 
-        {/* Center FAB — Assess */}
+        {/* Center FAB — Assess. Absolutely positioned so it doesn't affect row height. */}
         <li className="flex justify-center">
           <Link
             to="/assess"
             aria-label="Start symptom check"
-            className={`relative -mt-6 grid h-14 w-14 place-items-center rounded-full gradient-primary text-primary-foreground shadow-float ring-4 ring-background transition-transform active:scale-95 ${
-              isActive("/assess") ? "scale-105" : ""
-            }`}
+            className="absolute left-1/2 top-0 grid h-14 w-14 -translate-x-1/2 -translate-y-1/3 place-items-center rounded-full gradient-primary text-primary-foreground shadow-float ring-4 ring-background transition-colors active:opacity-90"
           >
             <Stethoscope className="h-6 w-6" strokeWidth={2.2} />
           </Link>
@@ -59,7 +57,7 @@ function NavItem({
     <li>
       <Link
         to={to}
-        className="flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors"
+        className="flex flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 transition-colors"
       >
         <Icon
           className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
