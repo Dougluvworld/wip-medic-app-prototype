@@ -168,7 +168,7 @@ function Assess() {
       const s = assessmentStore.get();
       const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
       setFollowUps(ups);
-      await advance({ kind: "followup", idx: 0 });
+      await advance({ kind: "followup", idx: 0 }, ups);
       return;
     }
 
