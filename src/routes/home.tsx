@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { InlineThemeToggle } from "@/components/ThemeToggle";
 import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { loadProfile } from "@/lib/profile-store";
@@ -76,10 +77,11 @@ function Home() {
               <p className="text-base font-semibold">{name}</p>
             </div>
           </div>
+          <InlineThemeToggle />
           {/* Compact emergency call pill — dials the user's saved contact when available */}
           <a
             href={sosHref}
-            className="inline-flex max-w-[55%] items-center gap-1.5 truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
+            className="inline-flex max-w-[45%] items-center gap-1.5 truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
             aria-label={sosAria}
           >
             <Phone className="h-3.5 w-3.5 shrink-0" />
