@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import {
   ArrowRight,
