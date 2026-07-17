@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { AssessmentResult } from "./assessment.functions";
 import type { FollowUpAnswer } from "./follow-ups";
+import type { CareRecommendation } from "./care-recommendation";
 
 type AssessmentState = {
   mainSymptom: string | null;
@@ -12,6 +13,7 @@ type AssessmentState = {
   redFlag: string | null;
   aiResult: AssessmentResult | null;
   aiError: string | null;
+  careRecommendation: CareRecommendation | null;
 };
 
 const initial: AssessmentState = {
@@ -24,6 +26,7 @@ const initial: AssessmentState = {
   redFlag: null,
   aiResult: null,
   aiError: null,
+  careRecommendation: null,
 };
 
 let state: AssessmentState = { ...initial };
