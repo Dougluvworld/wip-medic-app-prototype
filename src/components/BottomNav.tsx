@@ -3,11 +3,11 @@ import { Home, Stethoscope, MapPin, User, Settings } from "lucide-react";
 
 const leftItems = [
   { to: "/home", label: "Home", icon: Home },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/care", label: "Care", icon: MapPin },
 ] as const;
 
 const rightItems = [
-  { to: "/care", label: "Care", icon: MapPin },
+  { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
