@@ -77,10 +77,11 @@ function Home() {
               <p className="text-base font-semibold">{name}</p>
             </div>
           </div>
+          <InlineThemeToggle />
           {/* Compact emergency call pill — dials the user's saved contact when available */}
           <a
             href={sosHref}
-            className="inline-flex max-w-[55%] items-center gap-1.5 truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
+            className="inline-flex max-w-[45%] items-center gap-1.5 truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
             aria-label={sosAria}
           >
             <Phone className="h-3.5 w-3.5 shrink-0" />
