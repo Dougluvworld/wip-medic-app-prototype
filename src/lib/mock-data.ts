@@ -1,3 +1,5 @@
+import type { WeeklySchedule } from "./hours";
+
 export type Review = {
   id: string;
   author: string;
@@ -19,6 +21,7 @@ export type Provider = {
   reviews: number;
   hours: string;
   openNow: boolean;
+  schedule: WeeklySchedule; // Sun..Sat — drives real-time open/closed
   address: string;
   phone: string;
   lat?: number;
@@ -28,6 +31,14 @@ export type Provider = {
   ratingBreakdown?: RatingBreakdown;
   updatedAgo?: string;
 };
+
+// Common schedule presets (Sun..Sat)
+const daily = (open: number, close: number): WeeklySchedule =>
+  [{ open, close }, { open, close }, { open, close }, { open, close }, { open, close }, { open, close }, { open, close }];
+const weekdayOnly = (open: number, close: number): WeeklySchedule =>
+  [null, { open, close }, { open, close }, { open, close }, { open, close }, { open, close }, null];
+const alwaysOpen: WeeklySchedule = ["24h", "24h", "24h", "24h", "24h", "24h", "24h"];
+
 
 const defaultBreakdown: RatingBreakdown = { 5: 68, 4: 22, 3: 7, 2: 2, 1: 1 };
 
