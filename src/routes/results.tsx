@@ -161,6 +161,12 @@ function Results() {
     },
   }[urgency];
 
+  const recommendation = recommendCareTypes(urgency, a.redFlag);
+  useEffect(() => {
+    assessmentStore.set({ careRecommendation: recommendation });
+  }, [recommendation.types.join("|"), recommendation.reason]);
+
+
 
 
   return (
