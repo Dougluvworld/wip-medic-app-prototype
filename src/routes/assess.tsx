@@ -7,7 +7,7 @@ import { assessmentStore } from "@/lib/assessment-store";
 import { pickFollowUps, detectRedFlag, type FollowUp } from "@/lib/follow-ups";
 import { runAssessment } from "@/lib/assessment.functions";
 import { loadProfile } from "@/lib/profile-store";
-import { ArrowUp, Mic, SkipForward } from "lucide-react";
+import { ArrowUp, RefreshCw, SkipForward } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/assess")({
@@ -17,12 +17,14 @@ export const Route = createFileRoute("/assess")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { demo?: boolean } => ({
+    demo: s.demo === "1" || s.demo === true || s.demo === "true",
+  }),
   component: Assess,
 });
 
 type Msg = { id: string; role: "assistant" | "user"; text: string };
 
-// Body area detection (silent — captured in background)
 const BODY_MAP: Array<{ re: RegExp; area: string }> = [
   { re: /stomach|belly|tummy|abdom|gut/i, area: "Abdomen" },
   { re: /chest|heart/i, area: "Chest" },
@@ -49,12 +51,11 @@ type Phase =
   | { kind: "severity" }
   | { kind: "additional" }
   | { kind: "thinking" }
+  | { kind: "error" }
   | { kind: "done" };
 
 const ADDITIONAL_CHIPS = ["Fever", "Chills", "Nausea", "Vomiting", "Dizziness", "Fatigue", "Rash", "None"];
 
-// Match chips against what the user already mentioned so we don't ask them
-// to re-tag a symptom they've already described.
 const CHIP_SYNONYMS: Record<string, RegExp> = {
   Fever: /\bfever|temperature|hot\b/i,
   Chills: /\bchills?|shiver/i,
@@ -72,13 +73,15 @@ function filterChips(context: string): string[] {
   });
 }
 
+const AI_TIMEOUT_MS = 25_000;
+
 function Assess() {
   const nav = useNavigate();
+  const { demo } = Route.useSearch();
   const call = useServerFn(runAssessment);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(true);
-  const [listening, setListening] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "main" });
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,7 +89,6 @@ function Assess() {
 
   useEffect(() => { assessmentStore.reset(); }, []);
 
-  // Post an assistant message with a small typing delay
   const say = (text: string) => {
     setTyping(true);
     return new Promise<void>((resolve) => {
@@ -95,11 +97,10 @@ function Assess() {
         setTyping(false);
         taRef.current?.focus();
         resolve();
-      }, 550);
+      }, 450);
     });
   };
 
-  // Kick off first prompt (guard against StrictMode double-invoke)
   const bootedRef = useRef(false);
   useEffect(() => {
     if (bootedRef.current) return;
@@ -112,15 +113,11 @@ function Assess() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, typing, phase]);
 
-  // Advance to a given phase and post its prompt
   const advance = async (next: Phase, ups: FollowUp[] = followUps) => {
     setPhase(next);
     if (next.kind === "followup") {
       const q = ups[next.idx];
-      if (!q) {
-        await advance({ kind: "duration" }, ups);
-        return;
-      }
+      if (!q) { await advance({ kind: "duration" }, ups); return; }
       await say(q.prompt);
     } else if (next.kind === "duration") {
       await say("How long has this been going on?");
@@ -131,11 +128,32 @@ function Assess() {
     }
   };
 
+  const runAi = async () => {
+    const s = assessmentStore.get();
+    const profile = loadProfile();
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Timed out")), AI_TIMEOUT_MS),
+    );
+    return Promise.race([
+      call({
+        data: {
+          mainSymptom: s.mainSymptom ?? "unspecified",
+          bodyArea: s.bodyArea,
+          duration: s.duration,
+          severity: s.severity,
+          additional: s.additional,
+          followUps: s.followUpAnswers.map((a) => ({ prompt: a.prompt, answer: a.answer })),
+          profile,
+        },
+      }),
+      timeout,
+    ]);
+  };
+
   const finish = async () => {
     setPhase({ kind: "thinking" });
     const s = assessmentStore.get();
 
-    // Red-flag screen first — skips the AI call.
     const redFlag = detectRedFlag({
       mainSymptom: s.mainSymptom,
       severity: s.severity,
@@ -149,28 +167,35 @@ function Assess() {
       return;
     }
 
-    await say("Thanks. Let me think this through…");
+    await say("Thanks — analysing your answers…");
 
     try {
-      const profile = loadProfile();
-      const result = await call({
-        data: {
-          mainSymptom: s.mainSymptom ?? "unspecified",
-          bodyArea: s.bodyArea,
-          duration: s.duration,
-          severity: s.severity,
-          additional: s.additional,
-          followUps: s.followUpAnswers.map((a) => ({ prompt: a.prompt, answer: a.answer })),
-          profile,
-        },
-      });
+      const result = await runAi();
       assessmentStore.set({ aiResult: result, aiError: null });
-      await say(`Got it. I've put together an assessment — top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
+      await say(`Got it. Top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
+      setPhase({ kind: "done" });
     } catch (err) {
-      assessmentStore.set({ aiError: err instanceof Error ? err.message : "Assessment failed" });
-      await say("I hit a snag reasoning about this — I'll fall back to a basic assessment on the next screen.");
+      const msg = err instanceof Error ? err.message : "Assessment failed";
+      assessmentStore.set({ aiError: msg });
+      await say("I couldn't finish reasoning about this. You can retry, or continue with a basic assessment.");
+      setPhase({ kind: "error" });
     }
-    setPhase({ kind: "done" });
+  };
+
+  const retryAi = async () => {
+    setPhase({ kind: "thinking" });
+    await say("Trying again…");
+    try {
+      const result = await runAi();
+      assessmentStore.set({ aiResult: result, aiError: null });
+      await say(`Got it. Top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
+      setPhase({ kind: "done" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Assessment failed";
+      assessmentStore.set({ aiError: msg });
+      await say("Still no luck. Continue with the basic assessment or try later.");
+      setPhase({ kind: "error" });
+    }
   };
 
   const handleFreeText = async (raw: string) => {
@@ -237,18 +262,9 @@ function Assess() {
     return "";
   }, [phase, followUps]);
 
-  const startMockListen = () => {
-    setListening(true);
-    setTimeout(() => {
-      setInput(currentVoiceSample);
-      setListening(false);
-      taRef.current?.focus();
-    }, 1200);
-  };
-
   const skip = () => currentVoiceSample && handleFreeText(currentVoiceSample);
 
-  // Total steps for progress bar: main + followups + duration + severity + additional
+  // Progress: only meaningful during structured question phases.
   const totalSteps = 1 + followUps.length + 3;
   const completedSteps =
     phase.kind === "main" ? 0 :
@@ -258,27 +274,34 @@ function Assess() {
     phase.kind === "additional" ? 3 + followUps.length :
     totalSteps;
   const progress = (completedSteps / Math.max(totalSteps, 1)) * 100;
+  const indeterminate = phase.kind === "thinking";
 
-  const showTextInput = phase.kind === "main" || phase.kind === "followup" ||
-    (phase.kind === "duration" && false); // duration uses chips
+  const showTextInput = phase.kind === "main" || phase.kind === "followup";
   const showDurationChips = phase.kind === "duration";
   const showSeverity = phase.kind === "severity";
   const showAdditional = phase.kind === "additional";
   const showDone = phase.kind === "done";
+  const showError = phase.kind === "error";
   const showThinking = phase.kind === "thinking";
+
+  const subtitle =
+    showDone ? "Summary" :
+    showError ? "Something went wrong" :
+    showThinking ? "Analysing…" :
+    `Step ${Math.min(completedSteps + 1, totalSteps)} of ${totalSteps}`;
 
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
-        <ScreenHeader
-          title="Symptom check"
-          subtitle={showDone ? "Summary" : showThinking ? "Analysing…" : `Step ${Math.min(completedSteps + 1, totalSteps)} of ${totalSteps}`}
-          back="/home"
-        />
+        <ScreenHeader title="Symptom check" subtitle={subtitle} back="auto" backFallback="/home" />
 
         <div className="px-5 pt-3">
           <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full gradient-primary transition-all duration-500" style={{ width: `${progress}%` }} />
+            {indeterminate ? (
+              <div className="h-full w-1/3 animate-pulse gradient-primary" />
+            ) : (
+              <div className="h-full gradient-primary transition-all duration-500" style={{ width: `${progress}%` }} />
+            )}
           </div>
         </div>
 
@@ -317,6 +340,23 @@ function Assess() {
             />
           )}
 
+          {showError && (
+            <div className="animate-fade-in-up space-y-2 pt-2">
+              <button
+                onClick={retryAi}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft active:scale-[0.98]"
+              >
+                <RefreshCw className="h-4 w-4" /> Retry AI analysis
+              </button>
+              <button
+                onClick={() => nav({ to: "/results" })}
+                className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-card text-sm font-semibold text-foreground"
+              >
+                Continue with basic assessment
+              </button>
+            </div>
+          )}
+
           {showDone && (
             <div className="animate-fade-in-up pt-2">
               <button
@@ -332,20 +372,9 @@ function Assess() {
           )}
         </div>
 
-        {showTextInput && !showDone && !showThinking && (
+        {showTextInput && !showDone && !showThinking && !showError && (
           <div className="sticky bottom-0 border-t border-border/60 bg-background/90 px-3 pb-4 pt-3 backdrop-blur">
             <div className="flex items-end gap-2">
-              <button
-                onClick={startMockListen}
-                aria-label="Voice input (demo)"
-                className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-full border transition ${
-                  listening ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-primary/40"
-                }`}
-              >
-                {listening && <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />}
-                <Mic className="relative h-5 w-5" />
-              </button>
-
               <div className="flex flex-1 items-end rounded-3xl border border-border bg-card px-4 py-2 shadow-soft focus-within:border-primary/50">
                 <textarea
                   ref={taRef}
@@ -357,8 +386,9 @@ function Assess() {
                       handleFreeText(input);
                     }
                   }}
-                  placeholder={listening ? "Listening…" : "Type your reply…"}
+                  placeholder="Type your reply…"
                   rows={1}
+                  aria-label="Your reply"
                   className="max-h-28 flex-1 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-muted-foreground"
                 />
               </div>
@@ -373,7 +403,7 @@ function Assess() {
               </button>
             </div>
 
-            {currentVoiceSample && (
+            {demo && currentVoiceSample && (
               <button
                 onClick={skip}
                 className="mx-auto mt-2 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
@@ -393,11 +423,14 @@ function Assess() {
 function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
   return (
     <div className="pl-10">
-      <div className="grid grid-cols-10 gap-1.5">
+      <div role="radiogroup" aria-label="Severity 1 to 10" className="grid grid-cols-10 gap-1.5">
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
           <button
             key={n}
             onClick={() => onPick(n)}
+            role="radio"
+            aria-checked={false}
+            aria-label={`${n} out of 10`}
             className={`h-11 rounded-lg text-sm font-semibold transition ${
               n <= 3 ? "bg-success/15 text-success hover:bg-success/25" :
               n <= 6 ? "bg-warning/20 text-warning-foreground hover:bg-warning/30" :
@@ -409,7 +442,7 @@ function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
         ))}
       </div>
       <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
-        <span>Mild</span><span>Severe</span>
+        <span>Mild</span><span>Moderate</span><span>Severe</span>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { Brain, Compass, HeartPulse } from "lucide-react";
+import { markOnboarded } from "@/lib/profile-store";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -35,6 +36,11 @@ function Onboarding() {
   const Icon = step.icon;
   const last = i === steps.length - 1;
 
+  const finish = () => {
+    markOnboarded();
+    nav({ to: "/home" });
+  };
+
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col px-6 pt-[calc(env(safe-area-inset-top)+20px)]">
@@ -49,7 +55,11 @@ function Onboarding() {
               />
             ))}
           </div>
-          <Link to="/home" className="text-sm font-medium text-muted-foreground hover:text-primary">
+          <Link
+            to="/home"
+            onClick={() => markOnboarded()}
+            className="text-sm font-medium text-muted-foreground hover:text-primary"
+          >
             Skip
           </Link>
         </div>
@@ -68,7 +78,7 @@ function Onboarding() {
 
         <div className="space-y-3 pb-10">
           <button
-            onClick={() => (last ? nav({ to: "/home" }) : setI(i + 1))}
+            onClick={() => (last ? finish() : setI(i + 1))}
             className="flex h-14 w-full items-center justify-center rounded-2xl gradient-primary text-base font-semibold text-primary-foreground shadow-soft transition-transform active:scale-[0.98]"
           >
             {last ? "Get started" : "Continue"}

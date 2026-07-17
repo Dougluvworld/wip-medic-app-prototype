@@ -1,75 +1,73 @@
-## Goal
 
-Make the "navigate" pillar as strong as the "assess" pillar. Right now the assessment output and the care directory don't talk to each other. After a result, the user should land on a shortlist that already matches the urgency the AI decided — with a real map, real distances, and one-tap actions to call or get directions.
+# Apply full app review — implementation plan
 
-## What changes for the user
+I'll ship the whole review in three passes. Each pass is self-contained and leaves the app in a working state.
 
-1. **Result → "See care nearby" opens a filtered shortlist.** High urgency → Hospital + Urgent Care. Medium → GP + Urgent Care (walk-in doctor abroad). Low → Pharmacy first, then GP. Empty state suggests calling 112/999/local emergency line for High.
-2. **Provider list is ranked, not just filtered.** Sorted by a simple score: recommended-for-urgency > open-now > distance. Each card shows a small "Recommended for your assessment" chip when it matches the AI's care type.
-3. **Real map (Google Maps).** The map placeholder on `/care` and the mini-map on `/care/$id` become real Google Maps with pins for the visible providers and a "You are here" marker.
-4. **Real distances.** When the user allows location, distances/travel-min are recomputed from their coordinates to each provider (Haversine — no Routes API call, no cost). Fall back to the mock values if permission is denied.
-5. **One-tap "Get directions" opens Google Maps navigation** from current location to the provider address (already partially wired — we'll polish it and add on the list cards too).
+## Pass 1 — Trust & correctness (remove/fix fake affordances)
 
-## How it works
+- **Splash** (`src/routes/index.tsx`): if `localStorage.mediCareOnboarded === "1"`, redirect to `/home`. Collapse "Sign In" + "Create Account" into a single "Get started" CTA (keeps "Continue as Guest"). Set the flag when onboarding completes.
+- **Home** (`src/routes/home.tsx`):
+  - Read name from profile store; fall back to "there".
+  - Remove the mock "Recent assessments" list until real history exists; replace with a compact "Start your first check-in" empty state (or, if `localStorage` has past AI results, render those — see Pass 3).
+  - Remove the dead "See all" button.
+  - Rotate daily tip from a small pool keyed to the day-of-year.
+  - Demote emergency banner to a slim pinned pill so the primary CTA is unmissable.
+- **Assess** (`src/routes/assess.tsx`):
+  - Remove the fake mic button (it just types a canned string). Keep only the send button.
+  - Gate "Use example answer" behind `?demo=1` search param.
+  - Add a 25s timeout + one-tap "Retry" on the AI call.
+  - Switch the progress bar to an indeterminate "Analysing…" state during `thinking`/red-flag branches.
+- **Results** (`src/routes/results.tsx`):
+  - Convert AI-error notice from tiny grey footer to a visible banner at the top of the content.
+  - Remove the duplicate bottom "Find care near me" link (keep the single urgency CTA).
+  - Replace numeric confidence % with a qualitative label ("More likely / Possible / Less likely"); keep the % only inside the expanded reasoning line.
+  - Add a "Copy summary" button (copies urgency + top 3 conditions + next step to clipboard) with a `Copied ✓` toast.
+- **Profile** (`src/routes/profile.tsx`):
+  - Persist `name` to profile store; read it on mount.
+  - Add subtle inline "Saved ✓" indicator after any change (2s fade).
+  - Remove hardcoded emergency contact; replace with editable single-contact card (name + relationship + phone) persisted in profile store.
+  - Add "Blood type" and "GP / doctor name" fields.
+- **Settings** (`src/routes/settings.tsx`):
+  - Persist dark mode to `localStorage` and read on mount (in `useEffect` to avoid hydration mismatch).
+  - Hide the placeholder rows (Language, Privacy, Medical data, Support) behind a "Coming soon" tag OR remove them — I'll tag them "Coming soon" and disable clicks so the settings page still looks populated.
+  - Rename "Sign out" → "Reset demo" (clears localStorage + navigates to `/`).
 
-### Urgency → care type mapping (`src/lib/care-recommendation.ts`, new)
-- Pure function `recommendCareTypes(urgency, redFlag, mainSymptom)` → ordered array of provider types, plus a one-line "why we're showing this" string.
-- High + red flag → `["Hospital", "Urgent Care"]` with emergency-call banner.
-- Medium → `["GP", "Urgent Care"]`.
-- Low → `["Pharmacy", "GP"]`.
+## Pass 2 — Core-flow UX
 
-### Assessment store (`src/lib/assessment-store.ts`, edit)
-- Add `careRecommendation` (result of the function above) so `/care` can read it without recomputing.
+- **Bottom nav** (`src/components/BottomNav.tsx`): 5-slot layout with a raised center FAB for Assess (larger circle, gradient, elevated shadow). Home / Care flank left; Profile / Settings flank right. Move Settings into the nav so it's reachable everywhere; drop the Settings gear from Home header.
+- **Show bottom nav consistently**: audit `care.$id.tsx` and any other deep screens; render `<BottomNav />` everywhere except splash + onboarding.
+- **ScreenHeader back**: change `back` prop to support "auto" — uses `router.history.back()` with fallback path. Update Care detail and Results to use auto-back.
+- **Assess edit-answer**: each user bubble gets a small pencil affordance → rewinds `messages` + `phase` to that step; profile/state carried forward is recomputed from remaining answers.
+- **Care list** (`src/routes/care.index.tsx`):
+  - When the recommendation banner shows, drop the auto-selected chip highlight (one signal, not two).
+  - Add "Opens at HH:MM" hint to closed cards (using `hours.ts`).
+  - Add empty state when filters return 0 providers (illustration + "Clear filters" button).
+  - Location: on first visit show a small "Enable location for accurate distances" prompt above the map, with a Grant button; remember dismissal in localStorage.
+- **Care detail** (`src/routes/care.$id.tsx`): sticky bottom action bar with `[Call] [Directions] [Book]`. Label reviews section "Sample reviews" until real.
+- **Page transitions**: add fade + slight slide on `<Outlet />` swap in `__root.tsx` using CSS keyframes (no framer-motion dep needed).
 
-### Results page (`src/routes/results.tsx`, edit)
-- Existing "Find care nearby" CTA now links to `/care` with `?type=<top-recommendation>` (already supported by `validateSearch`) AND stores the full ordered list in the assessment store.
-- High-urgency banner adds an "Call emergency" button that uses `tel:112` (or locale-appropriate via `getEmergencyInfo`).
+## Pass 3 — Depth
 
-### Care list (`src/routes/care.index.tsx`, edit)
-- Read `assessmentStore.careRecommendation` on mount. If present, show a dismissible "Recommended for your assessment: …" banner at the top and pre-select the top type in the filter chips.
-- Ranking: providers get a score = (matches recommended type ? 100 : 0) + (openNow ? 20 : 0) − distanceKm. Sort descending.
-- Show a small teal "★ Recommended" pill on cards whose type is in the recommended list.
-- Replace the SVG map placeholder with a real Google Map (see below).
+- **Persist assessment history**: on results mount, append `{id, date, mainSymptom, urgency, topCondition}` to `localStorage.mediCareHistory` (cap 20). Wire Home's "Recent assessments" to read from it. Add a `/history` route with the full list; each item routes to a new `/results/$id` that reads that snapshot.
+- **Personalised daily tip**: if profile has conditions/allergies, prefer a tip from a matching pool (e.g. "asthma → pollen check"); otherwise generic.
+- **Accessibility sweep**: `aria-label` on every icon-only button (mic — now removed —, pencil, edit, share, dismiss, close, back). Ensure severity picker is a `role="radiogroup"` with arrow-key navigation. Replace colour-only urgency cues on the severity picker with a small text label per band.
+- **Loading skeletons**: skeleton cards for the AI thinking state on Results (if user lands on `/results` while `aiResult` is still null, e.g. deep-link) and for the map tile while location is being fetched.
 
-### Provider detail (`src/routes/care.$id.tsx`, edit)
-- Replace the mini-map placeholder with a real Google Map centred on the provider.
-- Keep the existing Call / Directions / Book actions; make the "Directions" link use `https://www.google.com/maps/dir/?api=1&destination=<lat>,<lng>` when coords are known, else fall back to the current address-based URL.
+## Technical notes
 
-### Google Maps integration (`src/components/ProviderMap.tsx`, new)
-- Uses the **Google Maps Platform connector** (Managed by Lovable — one click, no user setup) via `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY` and the browser JS SDK.
-- Loads Maps JS async with `callback=initMap`, uses `google.maps.Marker` (not AdvancedMarkerElement), no `mapId`.
-- Props: `providers`, `userLocation?`, `activeId?`. Renders pins; clicking a pin scrolls the matching list card into view.
-- Gracefully degrades to the current gradient placeholder if the key is missing.
+- All persistence uses `localStorage` (matches existing pattern in `profile-store.ts`, `travel-mode.ts`). Cloud not enabled — I won't wire it unless you ask.
+- No new npm deps. Toast for "Saved ✓" / "Copied ✓" uses a tiny local component (fixed-position, auto-dismiss) to avoid pulling in a toast lib if one isn't already wired.
+- Profile store gains: `name`, `bloodType`, `gpName`, `emergencyContact: { name, relationship, phone }`. Migration: existing keys read unchanged; new fields default to empty.
+- The center-FAB nav means Assess is no longer a peer route in the grid — I'll implement it as a 5-column grid with slot 3 elevated; active state still highlights correctly on all routes.
+- Page transitions are pure CSS (`@keyframes fade-slide-in`) applied to a route-keyed wrapper — no layout thrash on TanStack's default routing.
 
-### User location (`src/lib/use-user-location.ts`, new)
-- Small hook wrapping `navigator.geolocation.getCurrentPosition` with permission state (`prompt` / `granted` / `denied`).
-- Adds mock coordinates to each provider in `src/lib/mock-data.ts` (Dublin lat/lngs) so distance recompute works.
-- Haversine helper for distance in km; travel-min estimate = distanceKm × 12 (walking) — keeps it honest without a Routes API call.
+## What I will NOT do (unless you ask)
 
-### Provider mock data (`src/lib/mock-data.ts`, edit)
-- Add `lat`, `lng` to each of the 5 providers (real Dublin coordinates for the named streets).
+- Wire real authentication / Lovable Cloud (mentioned as a follow-up in the review).
+- Wire real Web Speech API voice input (removed instead — safer than half-real).
+- Build a "Share as PDF" export (Copy summary covers 90% of the use case with none of the complexity).
+- Build stubs for Language / Privacy / Medical data / Support pages (marked "Coming soon" instead).
 
-## Files
+## Rollout order
 
-- **New** `src/lib/care-recommendation.ts`
-- **New** `src/components/ProviderMap.tsx`
-- **New** `src/lib/use-user-location.ts`
-- **Edit** `src/lib/assessment-store.ts` — add `careRecommendation`
-- **Edit** `src/lib/mock-data.ts` — add lat/lng
-- **Edit** `src/routes/results.tsx` — set care recommendation, deep-link to `/care?type=…`, emergency call button
-- **Edit** `src/routes/care.index.tsx` — recommendation banner, ranking, real map
-- **Edit** `src/routes/care.$id.tsx` — real mini-map, coord-based directions link
-
-## Setup
-
-- Enable the **Google Maps Platform** connector (Managed by Lovable) — one click, no Google Cloud account needed. Runs on Lovable's `*.lovable.app` domain out of the box; you only need your own key later if you publish on a custom domain.
-- No new dependencies. Uses the Maps JavaScript API via a `<script>` tag loaded on demand.
-
-## Out of scope (for this step)
-
-- Real-time traffic / driving vs walking route selection (would need Routes API — costs credits).
-- Live "wait times" or slot availability at providers (needs partner data).
-- Booking flow beyond the existing demo confirmation.
-- Persisting past assessments so the care list stays personalised across sessions.
-
-Ready to build?
+I'll ship the passes in order, each as one implementation batch. If you want a smaller first cut, say "just Pass 1" and I'll stop there.

@@ -10,13 +10,14 @@ import { careLabel } from "@/lib/care-labels";
 import { useAssessment } from "@/lib/assessment-store";
 import { scoreProvider } from "@/lib/care-recommendation";
 import { haversineKm, useUserLocation } from "@/lib/use-user-location";
-import { Clock, MapPin, Navigation, Sparkles, Star, X } from "lucide-react";
+import { Clock, MapPin, MapPinOff, Navigation, Search, Sparkles, Star, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { isOpenNow, currentHoursLabel } from "@/lib/hours";
 
-
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
 type Filter = (typeof filters)[number];
+
+const LOCATION_DISMISSED_KEY = "medi-care.location-prompt-dismissed";
 
 export const Route = createFileRoute("/care/")({
   head: () => ({
@@ -38,16 +39,26 @@ function Care() {
   const [recDismissed, setRecDismissed] = useState(false);
   useEffect(() => { if (type) setFilter(type); }, [type]);
   const travel = useTravelState();
-  const { coords } = useUserLocation();
+  const { coords, status, request } = useUserLocation();
 
-  // Tick every minute so open/closed stays fresh.
+  const [locationDismissed, setLocationDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      setLocationDismissed(window.localStorage.getItem(LOCATION_DISMISSED_KEY) === "1");
+    } catch { /* ignore */ }
+  }, []);
+
+  const dismissLocationPrompt = () => {
+    setLocationDismissed(true);
+    try { window.localStorage.setItem(LOCATION_DISMISSED_KEY, "1"); } catch { /* ignore */ }
+  };
+
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
 
-  // Recompute distances + real-time availability.
   const enriched: Provider[] = useMemo(() => {
     return providers.map((p) => {
       const openNow = isOpenNow(p.schedule, now);
@@ -71,17 +82,47 @@ function Care() {
   const filterLabel = (f: Filter) => (f === "GP" ? careLabel(travel.mode) : f);
   const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Dublin, Ireland";
 
+  const showLocationPrompt = !coords && !locationDismissed && status !== "denied" && status !== "unavailable";
+
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
-        <ScreenHeader title="Care nearby" subtitle={subtitle} back="/home" />
+        <ScreenHeader title="Care nearby" subtitle={subtitle} back="auto" backFallback="/home" />
 
         <TravelBanner />
 
-        {/* Real map */}
         <div className="px-5 pt-4">
           <ProviderMap providers={list} userLocation={coords} height={176} />
         </div>
+
+        {/* Location permission prompt */}
+        {showLocationPrompt && (
+          <div className="mx-5 mt-3 flex items-start gap-3 rounded-2xl border border-border bg-card p-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent text-primary">
+              <MapPin className="h-4 w-4" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold">Enable location for accurate distances</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                We'll only use it while you're on this screen.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <button
+                onClick={request}
+                className="rounded-full gradient-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-soft"
+              >
+                Enable
+              </button>
+              <button
+                onClick={dismissLocationPrompt}
+                className="rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                Not now
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Recommendation banner from latest assessment */}
         {rec && !recDismissed && (
@@ -96,7 +137,7 @@ function Care() {
             <button
               onClick={() => setRecDismissed(true)}
               className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-              aria-label="Dismiss"
+              aria-label="Dismiss recommendation"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -124,11 +165,22 @@ function Care() {
 
         {/* Provider list */}
         <div className="flex-1 space-y-3 px-5 py-4">
-          {list.map((p) => (
-            <ProviderCard key={p.id} p={p} recommended={rec ? rec.types.includes(p.type) : false} />
-          ))}
-          {list.length === 0 && (
-            <p className="pt-8 text-center text-sm text-muted-foreground">No results for this filter.</p>
+          {list.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/40 p-6 text-center">
+              <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-muted text-muted-foreground">
+                <Search className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-sm font-semibold">No {filterLabel(filter).toLowerCase()} nearby</p>
+              <p className="mt-1 text-xs text-muted-foreground">Try a different filter to see more results.</p>
+              <button
+                onClick={() => setFilter("All")}
+                className="mt-4 inline-flex h-9 items-center justify-center rounded-full gradient-primary px-4 text-xs font-semibold text-primary-foreground shadow-soft"
+              >
+                Show all providers
+              </button>
+            </div>
+          ) : (
+            list.map((p) => <ProviderCard key={p.id} p={p} recommended={false} hasCoords={!!coords} />)
           )}
         </div>
 
@@ -145,7 +197,7 @@ const typeStyle: Record<Provider["type"], string> = {
   Hospital: "bg-destructive/10 text-destructive",
 };
 
-function ProviderCard({ p, recommended }: { p: Provider; recommended: boolean }) {
+function ProviderCard({ p, recommended, hasCoords }: { p: Provider; recommended: boolean; hasCoords: boolean }) {
   return (
     <Link
       to="/care/$id"
@@ -163,23 +215,26 @@ function ProviderCard({ p, recommended }: { p: Provider; recommended: boolean })
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${typeStyle[p.type]}`}>
               {p.type}
             </span>
-            {recommended && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                <Sparkles className="h-2.5 w-2.5" /> Recommended
-              </span>
-            )}
-            {p.openNow && (
+            {p.openNow ? (
               <span className="text-[10px] font-semibold text-success">● Open now</span>
+            ) : (
+              <span className="text-[10px] font-semibold text-muted-foreground">● {p.hours}</span>
             )}
           </div>
           <p className="mt-1 truncate text-sm font-semibold">{p.name}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <Navigation className="h-3 w-3" /> {p.distanceKm} km · {p.travelMin} min
+              {hasCoords ? (
+                <><Navigation className="h-3 w-3" /> {p.distanceKm} km · {p.travelMin} min</>
+              ) : (
+                <><MapPinOff className="h-3 w-3" /> ~{p.distanceKm} km · {p.travelMin} min</>
+              )}
             </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {p.hours}
-            </span>
+            {p.openNow && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" /> {p.hours}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1">
               <Star className="h-3 w-3 fill-current text-warning" /> {p.rating} ({p.reviews})
             </span>

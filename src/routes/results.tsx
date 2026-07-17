@@ -8,10 +8,10 @@ import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
-import { AlertTriangle, ChevronRight, Info, Phone, Sparkles } from "lucide-react";
-import { useEffect } from "react";
-
-
+import { saveHistoryEntry } from "@/lib/history-store";
+import { AlertTriangle, Copy, Info, Phone, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
@@ -31,7 +31,7 @@ function computeUrgency(severity: number, additional: string[], mainSymptom: str
   return "Low" as const;
 }
 
-type Condition = { name: string; confidence: number; blurb: string };
+type Condition = { name: string; confidence: number; blurb?: string; reasoning?: string };
 
 const conditionsBySymptom: Record<string, Condition[]> = {
   headache: [
@@ -109,6 +109,13 @@ function matchConditions(mainSymptom: string | null, additional: string[]): Cond
       ];
 }
 
+// Turn a raw confidence into a qualitative label — safer framing for triage.
+function likelihood(confidence: number): { label: string; tone: string } {
+  if (confidence >= 60) return { label: "More likely", tone: "bg-primary/10 text-primary" };
+  if (confidence >= 35) return { label: "Possible", tone: "bg-accent text-primary" };
+  return { label: "Less likely", tone: "bg-muted text-muted-foreground" };
+}
+
 function Results() {
   const a = useAssessment();
   const travel = useTravelState();
@@ -121,13 +128,12 @@ function Results() {
       ? `We recommend seeing a walk-in doctor or local clinic${travel.countryName ? ` in ${travel.countryName}` : ""} within 24–48 hours for a proper evaluation.`
       : "We recommend seeing your GP within 24–48 hours for a proper evaluation.";
 
-  // Prefer AI result; fall back to keyword matcher; red-flag always wins.
   const ai = a.aiResult;
   const urgency: "Low" | "Medium" | "High" = a.redFlag
     ? "High"
     : ai?.urgency ?? computeUrgency(a.severity, a.additional, a.mainSymptom);
 
-  const list: Array<{ name: string; confidence: number; blurb?: string; reasoning?: string }> =
+  const list: Condition[] =
     ai?.conditions.map((c) => ({ name: c.name, confidence: c.confidence, reasoning: c.reasoning })) ??
     matchConditions(a.mainSymptom, a.additional);
 
@@ -162,26 +168,100 @@ function Results() {
   }[urgency];
 
   const recommendation = recommendCareTypes(urgency, a.redFlag);
+
+  // Persist recommendation for /care AND save a history entry once.
+  const [saved, setSaved] = useState(false);
   useEffect(() => {
     assessmentStore.set({ careRecommendation: recommendation });
+    if (!saved && (a.mainSymptom || a.redFlag)) {
+      saveHistoryEntry({
+        mainSymptom: a.mainSymptom ?? "Symptom check",
+        urgency,
+        topCondition: list[0]?.name ?? "Assessment",
+        action: urgencyMap.next,
+      });
+      setSaved(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urgency, a.redFlag]);
 
+  const copySummary = async () => {
+    const lines = [
+      `Medi-Care assessment — ${new Date().toLocaleString()}`,
+      `Symptom: ${a.mainSymptom ?? "unspecified"} (${a.severity}/10)`,
+      `Urgency: ${urgencyMap.label}`,
+      `Next step: ${urgencyMap.next}`,
+      "",
+      "Possible conditions:",
+      ...list.slice(0, 3).map((c) => `  • ${c.name} — ${likelihood(c.confidence).label}`),
+      "",
+      "Guidance only — not a medical diagnosis.",
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      toast.success("Summary copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy — try selecting the text manually");
+    }
+  };
 
-
+  // Empty-state guard: user hit /results directly without running an assessment.
+  const hasData = a.mainSymptom || a.aiResult || a.redFlag;
+  if (!hasData) {
+    return (
+      <PhoneFrame>
+        <div className="flex min-h-full flex-col">
+          <ScreenHeader title="AI assessment" back="/home" />
+          <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-primary">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 font-display text-xl font-semibold">No assessment yet</h2>
+            <p className="mt-2 max-w-[280px] text-sm text-muted-foreground">
+              Run a quick symptom check to see your personalised results here.
+            </p>
+            <Link
+              to="/assess"
+              className="mt-6 flex h-12 items-center justify-center rounded-2xl gradient-primary px-6 text-sm font-semibold text-primary-foreground shadow-soft"
+            >
+              Start assessment
+            </Link>
+          </div>
+          <BottomNav />
+        </div>
+      </PhoneFrame>
+    );
+  }
 
   return (
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
-        <ScreenHeader title="AI assessment" back="/assess" right={
-          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-primary">
-            <Sparkles className="h-3 w-3" /> Beta
-          </span>
-        } />
+        <ScreenHeader
+          title="AI assessment"
+          back="auto"
+          backFallback="/home"
+          right={
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-primary">
+              <Sparkles className="h-3 w-3" /> Beta
+            </span>
+          }
+        />
 
         <TravelBanner />
 
         <div className="flex-1 space-y-5 px-5 py-5">
+          {/* Visible AI fallback banner (used to be tiny grey footnote) */}
+          {a.aiError && (
+            <div className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/10 p-4">
+              <Info className="h-4 w-4 shrink-0 text-warning-foreground" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-warning-foreground">Showing a basic assessment</p>
+                <p className="mt-1 text-xs text-foreground/80">
+                  AI reasoning wasn't available this time. The results below use a keyword-based fallback.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Urgency hero */}
           <div className={`relative overflow-hidden rounded-3xl border p-5 shadow-card animate-scale-in ${urgencyMap.tone}`}>
@@ -194,7 +274,7 @@ function Results() {
             </p>
           </div>
 
-          {/* Red-flag banner (highest priority) */}
+          {/* Red-flag banner */}
           {a.redFlag && (
             <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
               <div className="flex items-start gap-3">
@@ -243,6 +323,7 @@ function Results() {
               </div>
               <a
                 href={`tel:${emergency.number}`}
+                aria-label={`Call ${emergency.number}`}
                 className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft"
               >
                 <Phone className="h-3 w-3" /> Call {emergency.number}
@@ -250,7 +331,7 @@ function Results() {
             </div>
           )}
 
-          {/* Recommended next step */}
+          {/* Recommended next step — the ONE primary CTA */}
           <div className="rounded-3xl border border-border bg-card p-5 shadow-card">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recommended next step</p>
             <h3 className="mt-1 font-display text-xl font-semibold">{urgencyMap.next}</h3>
@@ -262,39 +343,48 @@ function Results() {
             >
               {urgencyMap.cta}
             </Link>
+            <button
+              onClick={copySummary}
+              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
+            >
+              <Copy className="h-4 w-4" /> Copy summary
+            </button>
           </div>
 
-          {/* Possible conditions — hidden on red-flag path (focus on the emergency) */}
+          {/* Possible conditions — qualitative framing */}
           {!a.redFlag && (
             <div>
               <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Possible conditions
               </h3>
               <div className="space-y-2">
-                {list.map((c) => (
-                  <div key={c.name} className="rounded-2xl border border-border bg-card p-4 shadow-card">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold">{c.name}</p>
-                        {c.blurb && <p className="mt-0.5 text-xs text-muted-foreground">{c.blurb}</p>}
+                {list.map((c) => {
+                  const l = likelihood(c.confidence);
+                  return (
+                    <div key={c.name} className="rounded-2xl border border-border bg-card p-4 shadow-card">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold">{c.name}</p>
+                          {c.blurb && <p className="mt-0.5 text-xs text-muted-foreground">{c.blurb}</p>}
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${l.tone}`}>
+                          {l.label}
+                        </span>
                       </div>
-                      <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-primary">
-                        {c.confidence}%
-                      </span>
+                      {c.reasoning && (
+                        <p className="mt-3 text-xs italic leading-relaxed text-muted-foreground">
+                          {c.reasoning}
+                          <span className="not-italic text-muted-foreground/70"> · {c.confidence}% confidence</span>
+                        </p>
+                      )}
                     </div>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full gradient-primary" style={{ width: `${c.confidence}%` }} />
-                    </div>
-                    {c.reasoning && (
-                      <p className="mt-3 text-xs italic leading-relaxed text-muted-foreground">{c.reasoning}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* When to seek help — AI-generated warnings */}
+          {/* When to seek help */}
           {ai && ai.whenToSeekHelp.length > 0 && (
             <div className="rounded-2xl border border-warning/40 bg-warning/5 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-warning-foreground/80">Seek care immediately if</p>
@@ -306,12 +396,6 @@ function Results() {
             </div>
           )}
 
-          {a.aiError && (
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
-              AI reasoning wasn't available — showing a basic assessment. ({a.aiError})
-            </div>
-          )}
-
           {/* Disclaimer */}
           <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/50 p-4">
             <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -319,11 +403,6 @@ function Results() {
               <span className="font-semibold text-foreground">Guidance only.</span> This is not a medical diagnosis. Always consult a qualified healthcare professional for medical advice.
             </p>
           </div>
-
-          <Link to="/care" className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-card hover:shadow-soft">
-            <span className="text-sm font-semibold">Find care near me</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
         </div>
 
         <BottomNav />

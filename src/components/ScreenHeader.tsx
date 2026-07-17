@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -6,34 +6,38 @@ export function ScreenHeader({
   title,
   subtitle,
   back,
+  backFallback,
   right,
 }: {
   title?: string;
   subtitle?: string;
-  back?: string | true;
+  /**
+   * - a path string: navigate there
+   * - `true` or `"auto"`: use browser back with `backFallback` (default "/home")
+   * - omit: no back button
+   */
+  back?: string | true | "auto";
+  backFallback?: string;
   right?: ReactNode;
 }) {
+  const router = useRouter();
+
+  const backNode =
+    back === undefined ? null : back === true || back === "auto" ? (
+      <AutoBackButton fallback={backFallback ?? "/home"} router={router} />
+    ) : (
+      <Link
+        to={back}
+        className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"
+        aria-label="Back"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </Link>
+    );
+
   return (
     <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/60 bg-background/85 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+14px)] backdrop-blur-xl">
-      {back ? (
-        typeof back === "string" ? (
-          <Link
-            to={back}
-            className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-        ) : (
-          <button
-            onClick={() => history.back()}
-            className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        )
-      ) : null}
+      {backNode}
       <div className="min-w-0 flex-1">
         {title ? (
           <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
@@ -44,6 +48,26 @@ export function ScreenHeader({
       </div>
       {right}
     </header>
+  );
+}
+
+function AutoBackButton({ fallback, router }: { fallback: string; router: ReturnType<typeof useRouter> }) {
+  const goBack = () => {
+    // Only go back if there's meaningful history within this session
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    } else {
+      router.navigate({ to: fallback });
+    }
+  };
+  return (
+    <button
+      onClick={goBack}
+      className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"
+      aria-label="Back"
+    >
+      <ChevronLeft className="h-5 w-5" />
+    </button>
   );
 }
 
