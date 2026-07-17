@@ -17,7 +17,7 @@ export function BottomNav() {
     pathname === to || (to !== "/home" && pathname.startsWith(to));
 
   return (
-    <nav className="sticky bottom-0 z-30 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+    <nav className="absolute bottom-0 left-0 right-0 z-30 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <ul className="relative grid h-16 grid-cols-5 items-center px-2">
         {leftItems.map(({ to, label, icon: Icon }) => (
           <NavItem key={to} to={to} label={label} Icon={Icon} active={isActive(to)} />
