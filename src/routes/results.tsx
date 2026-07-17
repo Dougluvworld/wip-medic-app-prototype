@@ -541,13 +541,94 @@ function Results() {
             </div>
           )}
 
-          {/* Disclaimer */}
+          {/* How was this recommendation generated? */}
+          <HowGenerated
+            usedProfile={!!ai?.usedProfile}
+            duration={a.duration}
+            severity={a.severity}
+            followUpCount={a.followUpAnswers.length}
+          />
+
+          {/* Reassuring disclaimer */}
           <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/50 p-4">
             <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              <span className="font-semibold text-foreground">Guidance only.</span> This is not a medical diagnosis. Always consult a qualified healthcare professional for medical advice.
+              <span className="font-semibold text-foreground">Medi-Care provides AI-assisted health guidance</span>{" "}
+              to help you understand your symptoms and decide the most appropriate next step. It does not
+              replace qualified healthcare professionals. If you believe you are experiencing a medical
+              emergency, contact your local emergency services immediately.
             </p>
           </div>
+        </div>
+
+        <BottomNav />
+      </div>
+    </PhoneFrame>
+  );
+}
+
+function HowGenerated({
+  usedProfile,
+  duration,
+  severity,
+  followUpCount,
+}: {
+  usedProfile: boolean;
+  duration: string | null;
+  severity: number;
+  followUpCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const items = [
+    { label: "Clinical symptom rules", on: true },
+    { label: "AI reasoning across your answers", on: true },
+    { label: `Severity you reported (${severity}/10)`, on: severity > 0 },
+    { label: `Duration${duration ? ` (${duration})` : ""}`, on: !!duration },
+    { label: `Your ${followUpCount} follow-up answer${followUpCount === 1 ? "" : "s"}`, on: followUpCount > 0 },
+    { label: "Your saved health profile", on: usedProfile },
+  ];
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-card">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">How was this recommendation generated?</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            A quick look at what shaped your result.
+          </p>
+        </div>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="border-t border-border px-4 py-3 animate-fade-in-up">
+          <ul className="space-y-1.5">
+            {items.map((it) => (
+              <li key={it.label} className="flex items-start gap-2 text-xs">
+                <span
+                  className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-bold ${
+                    it.on ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                  aria-hidden
+                >
+                  {it.on ? "✓" : "—"}
+                </span>
+                <span className={it.on ? "text-foreground/85" : "text-muted-foreground"}>{it.label}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            We combine these signals to suggest the most appropriate next step. This is guidance to
+            help you decide what to do — not a diagnosis.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
         </div>
 
         <BottomNav />
