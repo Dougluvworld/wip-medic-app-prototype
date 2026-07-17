@@ -53,6 +53,25 @@ type Phase =
 
 const ADDITIONAL_CHIPS = ["Fever", "Chills", "Nausea", "Vomiting", "Dizziness", "Fatigue", "Rash", "None"];
 
+// Match chips against what the user already mentioned so we don't ask them
+// to re-tag a symptom they've already described.
+const CHIP_SYNONYMS: Record<string, RegExp> = {
+  Fever: /\bfever|temperature|hot\b/i,
+  Chills: /\bchills?|shiver/i,
+  Nausea: /\bnause|queasy|sick to (my|the) stomach\b/i,
+  Vomiting: /\bvomit|puk(e|ing)|throw(ing)? up|threw up\b/i,
+  Dizziness: /\bdizz|light[- ]?headed|vertigo\b/i,
+  Fatigue: /\bfatigue|tired|exhaust|worn out\b/i,
+  Rash: /\brash|hives|spots?\b/i,
+};
+
+function filterChips(context: string): string[] {
+  return ADDITIONAL_CHIPS.filter((c) => {
+    const re = CHIP_SYNONYMS[c];
+    return !re || !re.test(context);
+  });
+}
+
 function Assess() {
   const nav = useNavigate();
   const call = useServerFn(runAssessment);
@@ -284,7 +303,17 @@ function Assess() {
 
           {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} />}
 
-          {showAdditional && !typing && <AdditionalPicker onDone={handleAdditional} />}
+          {showAdditional && !typing && (
+            <AdditionalPicker
+              onDone={handleAdditional}
+              options={filterChips(
+                [
+                  assessmentStore.get().mainSymptom ?? "",
+                  ...assessmentStore.get().followUpAnswers.map((a) => a.answer),
+                ].join(" "),
+              )}
+            />
+          )}
 
           {showDone && (
             <div className="animate-fade-in-up pt-2">
@@ -384,7 +413,7 @@ function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
   );
 }
 
-function AdditionalPicker({ onDone }: { onDone: (chips: string[]) => void }) {
+function AdditionalPicker({ onDone, options = ADDITIONAL_CHIPS }: { onDone: (chips: string[]) => void; options?: string[] }) {
   const [picked, setPicked] = useState<string[]>([]);
   const toggle = (c: string) => {
     if (c === "None") { setPicked(["None"]); return; }
@@ -396,7 +425,7 @@ function AdditionalPicker({ onDone }: { onDone: (chips: string[]) => void }) {
   return (
     <div className="pl-10">
       <div className="flex flex-wrap gap-2">
-        {ADDITIONAL_CHIPS.map((c) => {
+        {options.map((c) => {
           const on = picked.includes(c);
           return (
             <button
