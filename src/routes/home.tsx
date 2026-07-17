@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { InlineThemeToggle } from "@/components/ThemeToggle";
 import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { loadProfile } from "@/lib/profile-store";
