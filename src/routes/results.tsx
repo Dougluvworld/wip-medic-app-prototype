@@ -110,12 +110,14 @@ function matchConditions(mainSymptom: string | null, additional: string[]): Cond
       ];
 }
 
-// Turn a raw confidence into a qualitative label — safer framing for triage.
-function likelihood(confidence: number): { label: string; tone: string } {
-  if (confidence >= 60) return { label: "More likely", tone: "bg-primary/10 text-primary" };
-  if (confidence >= 35) return { label: "Possible", tone: "bg-accent text-primary" };
+// Rank-based labels — guarantees a visible hierarchy regardless of raw scores.
+function rankLabel(rank: number): { label: string; tone: string } {
+  if (rank === 0) return { label: "Most likely", tone: "bg-primary text-primary-foreground" };
+  if (rank === 1)
+    return { label: "Also possible", tone: "bg-accent text-primary border border-primary/30" };
   return { label: "Less likely", tone: "bg-muted text-muted-foreground" };
 }
+
 
 function Results() {
   const a = useAssessment();
