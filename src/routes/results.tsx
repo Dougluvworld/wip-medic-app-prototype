@@ -629,10 +629,3 @@ function HowGenerated({
     </div>
   );
 }
-        </div>
-
-        <BottomNav />
-      </div>
-    </PhoneFrame>
-  );
-}
