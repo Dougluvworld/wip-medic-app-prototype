@@ -248,9 +248,10 @@ function Assess() {
       assessmentStore.addRawText(text);
       if (await checkAndEscalate()) return;
       const s = assessmentStore.get();
-      const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
+      const ups = pickFollowUps(s.mainSymptom, s.bodyArea, s.rawTexts.join(" "));
       setFollowUps(ups);
       await advance({ kind: "followup", idx: 0 }, ups);
+
       return;
     }
 
