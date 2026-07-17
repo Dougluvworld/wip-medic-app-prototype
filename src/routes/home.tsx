@@ -8,6 +8,7 @@ import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { loadProfile } from "@/lib/profile-store";
 import { loadHistory, formatRelative, type HistoryEntry } from "@/lib/history-store";
+import { useAssessment } from "@/lib/assessment-store";
 import { dailyTip } from "@/lib/tips";
 import { AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -27,6 +28,8 @@ const urgencyColor = {
 
 function Home() {
   const travel = useTravelState();
+  const assessment = useAssessment();
+  const hasCareRecommendation = assessment.careRecommendation != null;
   const emergency = getEmergencyInfo(
     travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
   );
@@ -134,7 +137,9 @@ function Home() {
                 <ClipboardList className="h-5 w-5" />
               </div>
               <p className="mt-3 text-sm font-semibold">Find care</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Pharmacies, GPs, Emergency Depts</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {hasCareRecommendation ? "Recommended from your assessment" : "Browse nearby care"}
+              </p>
             </Link>
           </div>
 
