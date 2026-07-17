@@ -84,8 +84,10 @@ function Assess() {
   const [typing, setTyping] = useState(true);
   const [phase, setPhase] = useState<Phase>({ kind: "main" });
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [severityPicked, setSeverityPicked] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const canceledRef = useRef(false);
 
   useEffect(() => { assessmentStore.reset(); }, []);
 
@@ -100,6 +102,7 @@ function Assess() {
       }, 450);
     });
   };
+
 
   const bootedRef = useRef(false);
   useEffect(() => {
