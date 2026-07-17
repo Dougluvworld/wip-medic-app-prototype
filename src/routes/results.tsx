@@ -185,7 +185,43 @@ function Results() {
             </p>
           </div>
 
-          {urgency === "High" && (
+          {/* Red-flag banner (highest priority) */}
+          {a.redFlag && (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-destructive">Possible emergency</p>
+                  <p className="mt-1 text-xs text-foreground/80">{a.redFlag}</p>
+                </div>
+              </div>
+              <a
+                href={`tel:${emergency.number}`}
+                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-sm font-semibold text-destructive-foreground shadow-soft"
+              >
+                <Phone className="h-4 w-4" /> Call {emergency.number} now
+              </a>
+            </div>
+          )}
+
+          {/* AI urgency reasons */}
+          {ai && ai.urgencyReasons.length > 0 && !a.redFlag && (
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why this urgency</p>
+              <ul className="mt-2 space-y-1.5">
+                {ai.urgencyReasons.map((r, i) => (
+                  <li key={i} className="text-xs leading-relaxed text-foreground/80">• {r}</li>
+                ))}
+              </ul>
+              {ai.usedProfile && (
+                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-[10px] font-semibold text-primary">
+                  <Sparkles className="h-3 w-3" /> Personalised using your profile
+                </span>
+              )}
+            </div>
+          )}
+
+          {urgency === "High" && !a.redFlag && (
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
               <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
               <div className="flex-1">
@@ -219,31 +255,53 @@ function Results() {
             </Link>
           </div>
 
-
-          {/* Possible conditions */}
-          <div>
-            <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Possible conditions
-            </h3>
-            <div className="space-y-2">
-              {list.map((c) => (
-                <div key={c.name} className="rounded-2xl border border-border bg-card p-4 shadow-card">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{c.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{c.blurb}</p>
+          {/* Possible conditions — hidden on red-flag path (focus on the emergency) */}
+          {!a.redFlag && (
+            <div>
+              <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Possible conditions
+              </h3>
+              <div className="space-y-2">
+                {list.map((c) => (
+                  <div key={c.name} className="rounded-2xl border border-border bg-card p-4 shadow-card">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{c.name}</p>
+                        {c.blurb && <p className="mt-0.5 text-xs text-muted-foreground">{c.blurb}</p>}
+                      </div>
+                      <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-primary">
+                        {c.confidence}%
+                      </span>
                     </div>
-                    <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-primary">
-                      {c.confidence}%
-                    </span>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full gradient-primary" style={{ width: `${c.confidence}%` }} />
+                    </div>
+                    {c.reasoning && (
+                      <p className="mt-3 text-xs italic leading-relaxed text-muted-foreground">{c.reasoning}</p>
+                    )}
                   </div>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full gradient-primary" style={{ width: `${c.confidence}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* When to seek help — AI-generated warnings */}
+          {ai && ai.whenToSeekHelp.length > 0 && (
+            <div className="rounded-2xl border border-warning/40 bg-warning/5 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-warning-foreground/80">Seek care immediately if</p>
+              <ul className="mt-2 space-y-1.5">
+                {ai.whenToSeekHelp.map((w, i) => (
+                  <li key={i} className="text-xs leading-relaxed text-foreground/80">• {w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {a.aiError && (
+            <div className="rounded-2xl border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
+              AI reasoning wasn't available — showing a basic assessment. ({a.aiError})
+            </div>
+          )}
 
           {/* Disclaimer */}
           <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/50 p-4">
