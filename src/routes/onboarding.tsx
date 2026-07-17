@@ -176,6 +176,9 @@ function Onboarding() {
               Every step is optional. You can complete this later in your profile.
             </p>
           )}
+          <p className="text-center text-[10px] leading-relaxed text-muted-foreground/80">
+            Medi-Care provides guidance, not a medical diagnosis. In an emergency, call your local emergency number.
+          </p>
         </div>
       </div>
     </PhoneFrame>
