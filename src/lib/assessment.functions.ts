@@ -49,7 +49,7 @@ export const runAssessment = createServerFn({ method: "POST" })
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
-    const model = gateway("openai/gpt-5.5");
+    const model = gateway("openai/gpt-5.4-mini");
 
     const profileLines: string[] = [];
     if (data.profile?.age) profileLines.push(`Age: ${data.profile.age}`);
