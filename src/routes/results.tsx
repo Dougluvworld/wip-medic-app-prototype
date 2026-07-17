@@ -3,11 +3,13 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
-import { useAssessment } from "@/lib/assessment-store";
+import { assessmentStore, useAssessment } from "@/lib/assessment-store";
 import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { careLabel } from "@/lib/care-labels";
+import { recommendCareTypes } from "@/lib/care-recommendation";
 import { AlertTriangle, ChevronRight, Info, Phone, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 
 
 
@@ -159,6 +161,13 @@ function Results() {
     },
   }[urgency];
 
+  const recommendation = recommendCareTypes(urgency, a.redFlag);
+  useEffect(() => {
+    assessmentStore.set({ careRecommendation: recommendation });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urgency, a.redFlag]);
+
+
 
 
   return (
@@ -248,7 +257,7 @@ function Results() {
             <p className="mt-2 text-sm text-muted-foreground">{urgencyMap.nextBody}</p>
             <Link
               to="/care"
-              search={{ type: urgencyMap.careType }}
+              search={{ type: recommendation.types[0] }}
               className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft"
             >
               {urgencyMap.cta}

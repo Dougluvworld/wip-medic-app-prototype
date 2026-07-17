@@ -2,6 +2,7 @@ import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ReviewCard } from "@/components/ReviewCard";
+import { ProviderMap } from "@/components/ProviderMap";
 import { providers } from "@/lib/mock-data";
 import { Calendar, CheckCircle2, Clock, MapPin, MessageSquare, Navigation, Phone, Share2, ShieldCheck, Star } from "lucide-react";
 import { useState } from "react";
@@ -45,7 +46,10 @@ function ProviderDetail() {
   const [booked, setBooked] = useState(false);
   const telHref = `tel:${p.phone.replace(/\s+/g, "")}`;
   const smsHref = `sms:${p.phone.replace(/\s+/g, "")}`;
-  const mapsHref = `https://maps.google.com/?q=${encodeURIComponent(p.address)}`;
+  const mapsHref =
+    typeof p.lat === "number" && typeof p.lng === "number"
+      ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`
+      : `https://maps.google.com/?q=${encodeURIComponent(p.address)}`;
   const breakdown = p.ratingBreakdown ?? { 5: 70, 4: 20, 3: 6, 2: 3, 1: 1 };
   const totalBreakdown = breakdown[5] + breakdown[4] + breakdown[3] + breakdown[2] + breakdown[1];
 
@@ -136,21 +140,8 @@ function ProviderDetail() {
           </a>
 
           {/* Map mini */}
-          <div className="relative h-40 overflow-hidden rounded-3xl border border-border shadow-card">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: "linear-gradient(oklch(0.94 0.02 180) 1px, transparent 1px), linear-gradient(90deg, oklch(0.94 0.02 180) 1px, transparent 1px)",
-                backgroundSize: "20px 20px",
-                backgroundColor: "oklch(0.98 0.01 180)",
-              }}
-            />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full">
-              <div className="grid h-10 w-10 place-items-center rounded-full gradient-primary text-primary-foreground shadow-float">
-                <MapPin className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
+          <ProviderMap providers={[p]} height={160} />
+
 
           {/* About */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-card">

@@ -3,11 +3,15 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
+import { ProviderMap } from "@/components/ProviderMap";
 import { providers, type Provider } from "@/lib/mock-data";
 import { useTravelState } from "@/lib/travel-mode";
 import { careLabel } from "@/lib/care-labels";
-import { Clock, MapPin, Navigation, Star } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useAssessment } from "@/lib/assessment-store";
+import { scoreProvider } from "@/lib/care-recommendation";
+import { haversineKm, useUserLocation } from "@/lib/use-user-location";
+import { Clock, MapPin, Navigation, Sparkles, Star, X } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 
 
 const filters = ["All", "Pharmacy", "GP", "Urgent Care", "Hospital"] as const;
@@ -26,10 +30,34 @@ export const Route = createFileRoute("/care/")({
 
 function Care() {
   const { type } = Route.useSearch();
-  const [filter, setFilter] = useState<Filter>(type ?? "All");
+  const assessment = useAssessment();
+  const rec = assessment.careRecommendation;
+  const initial: Filter = type ?? (rec?.types[0] ?? "All");
+  const [filter, setFilter] = useState<Filter>(initial);
+  const [recDismissed, setRecDismissed] = useState(false);
   useEffect(() => { if (type) setFilter(type); }, [type]);
   const travel = useTravelState();
-  const list = providers.filter((p) => filter === "All" || p.type === filter);
+  const { coords } = useUserLocation();
+
+  // Recompute distances from user coords when available.
+  const enriched: Provider[] = useMemo(() => {
+    if (!coords) return providers;
+    return providers.map((p) => {
+      if (typeof p.lat !== "number" || typeof p.lng !== "number") return p;
+      const km = haversineKm(coords, { lat: p.lat, lng: p.lng });
+      return {
+        ...p,
+        distanceKm: Number(km.toFixed(1)),
+        travelMin: Math.max(1, Math.round(km * 12)),
+      };
+    });
+  }, [coords]);
+
+  const list = useMemo(() => {
+    const filtered = enriched.filter((p) => filter === "All" || p.type === filter);
+    return [...filtered].sort((a, b) => scoreProvider(b, rec) - scoreProvider(a, rec));
+  }, [enriched, filter, rec]);
+
   const filterLabel = (f: Filter) => (f === "GP" ? careLabel(travel.mode) : f);
   const subtitle = travel.mode === "away" && travel.countryName ? travel.countryName : "Dublin, Ireland";
 
@@ -40,51 +68,33 @@ function Care() {
 
         <TravelBanner />
 
-        {/* Map placeholder */}
+        {/* Real map */}
         <div className="px-5 pt-4">
-
-          <div className="relative h-44 overflow-hidden rounded-3xl border border-border shadow-card">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage:
-                  "linear-gradient(oklch(0.94 0.02 180) 1px, transparent 1px), linear-gradient(90deg, oklch(0.94 0.02 180) 1px, transparent 1px)",
-                backgroundSize: "24px 24px",
-                backgroundColor: "oklch(0.98 0.01 180)",
-              }}
-            />
-            {/* Roads */}
-            <div className="absolute left-0 right-0 top-1/3 h-1.5 bg-[oklch(0.9_0.02_180)]" />
-            <div className="absolute bottom-1/4 left-0 right-0 h-1.5 bg-[oklch(0.9_0.02_180)]" />
-            <div className="absolute inset-y-0 left-1/2 w-1.5 bg-[oklch(0.9_0.02_180)]" />
-            {/* Pins */}
-            {[
-              { top: "22%", left: "30%" },
-              { top: "48%", left: "55%" },
-              { top: "62%", left: "20%" },
-              { top: "34%", left: "72%" },
-            ].map((s, i) => (
-              <div key={i} className="absolute" style={s}>
-                <div className="grid h-8 w-8 -translate-x-1/2 -translate-y-full place-items-center rounded-full gradient-primary text-primary-foreground shadow-float">
-                  <MapPin className="h-4 w-4" />
-                </div>
-              </div>
-            ))}
-            {/* You are here */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="relative">
-                <div className="animate-pulse-ring h-4 w-4 rounded-full bg-secondary" />
-                <div className="absolute inset-0 h-4 w-4 rounded-full bg-secondary ring-2 ring-white" />
-              </div>
-            </div>
-            <div className="absolute bottom-3 left-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-semibold shadow-soft backdrop-blur">
-              📍 You are here
-            </div>
-          </div>
+          <ProviderMap providers={list} userLocation={coords} height={176} />
         </div>
 
+        {/* Recommendation banner from latest assessment */}
+        {rec && !recDismissed && (
+          <div className="mx-5 mt-3 flex items-start gap-3 rounded-2xl border border-primary/30 bg-accent/60 p-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl gradient-primary text-primary-foreground shadow-soft">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Recommended for your assessment</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-foreground/80">{rec.reason}</p>
+            </div>
+            <button
+              onClick={() => setRecDismissed(true)}
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
-        <div className="scrollbar-none overflow-x-auto px-5 pt-4">
+        <div className="scrollbar-none overflow-x-auto px-5 pt-3">
           <div className="flex min-w-max gap-2">
             {filters.map((f) => (
               <button
@@ -97,7 +107,6 @@ function Care() {
                 }`}
               >
                 {filterLabel(f)}
-
               </button>
             ))}
           </div>
@@ -106,7 +115,7 @@ function Care() {
         {/* Provider list */}
         <div className="flex-1 space-y-3 px-5 py-4">
           {list.map((p) => (
-            <ProviderCard key={p.id} p={p} />
+            <ProviderCard key={p.id} p={p} recommended={rec ? rec.types.includes(p.type) : false} />
           ))}
           {list.length === 0 && (
             <p className="pt-8 text-center text-sm text-muted-foreground">No results for this filter.</p>
@@ -126,22 +135,29 @@ const typeStyle: Record<Provider["type"], string> = {
   Hospital: "bg-destructive/10 text-destructive",
 };
 
-function ProviderCard({ p }: { p: Provider }) {
+function ProviderCard({ p, recommended }: { p: Provider; recommended: boolean }) {
   return (
     <Link
       to="/care/$id"
       params={{ id: p.id }}
-      className="block rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
+      className={`block rounded-2xl border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft ${
+        recommended ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
+      }`}
     >
       <div className="flex items-start gap-3">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl gradient-primary text-primary-foreground shadow-soft">
           <MapPin className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${typeStyle[p.type]}`}>
               {p.type}
             </span>
+            {recommended && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                <Sparkles className="h-2.5 w-2.5" /> Recommended
+              </span>
+            )}
             {p.openNow && (
               <span className="text-[10px] font-semibold text-success">● Open now</span>
             )}
