@@ -4,7 +4,9 @@ export type FollowUp = {
   id: string;
   prompt: string;
   voiceSample: string;
+  skipIf?: RegExp;
 };
+
 
 export type FollowUpAnswer = { id: string; prompt: string; answer: string };
 
@@ -20,9 +22,10 @@ const FOLLOWUPS: Record<string, FollowUp[]> = {
     { id: "head-neck", prompt: "Any neck stiffness, fever, or sensitivity to light?", voiceSample: "Bit of light sensitivity" },
   ],
   abdomen: [
-    { id: "abd-where", prompt: "Where exactly does it hurt — upper, lower, one side?", voiceSample: "Lower right side" },
+    { id: "abd-where", prompt: "Where exactly does it hurt — upper, lower, one side?", voiceSample: "Lower right side", skipIf: /\b(upper|lower|left|right|middle|centre|center|one[- ]sided|side)\b/i },
     { id: "abd-assoc", prompt: "Any vomiting, blood, or fever with it?", voiceSample: "Some nausea, no blood" },
   ],
+
   throat: [
     { id: "throat-swallow", prompt: "Is it painful to swallow, or is your voice affected?", voiceSample: "Painful to swallow" },
     { id: "throat-fever", prompt: "Any fever, swollen glands, or white patches at the back of the throat?", voiceSample: "Mild fever" },
@@ -63,13 +66,15 @@ const AREA_ALIASES: Record<string, string> = {
   cough: "cough",
 };
 
-export function pickFollowUps(mainSymptom: string | null, bodyArea: string | null): FollowUp[] {
+export function pickFollowUps(mainSymptom: string | null, bodyArea: string | null, priorText = ""): FollowUp[] {
   const hay = `${mainSymptom ?? ""} ${bodyArea ?? ""}`.toLowerCase();
+  const context = `${mainSymptom ?? ""} ${priorText}`;
   for (const [key, group] of Object.entries(AREA_ALIASES)) {
-    if (hay.includes(key)) return FOLLOWUPS[group];
+    if (hay.includes(key)) return FOLLOWUPS[group].filter((f) => !f.skipIf || !f.skipIf.test(context));
   }
   return FOLLOWUPS.generic;
 }
+
 
 // Red-flag rules. Return the first triggered reason.
 export function detectRedFlag(input: {
