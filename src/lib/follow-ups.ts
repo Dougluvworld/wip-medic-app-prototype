@@ -4,7 +4,9 @@ export type FollowUp = {
   id: string;
   prompt: string;
   voiceSample: string;
+  skipIf?: RegExp;
 };
+
 
 export type FollowUpAnswer = { id: string; prompt: string; answer: string };
 
