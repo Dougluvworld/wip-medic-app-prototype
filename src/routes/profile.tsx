@@ -133,7 +133,7 @@ function Profile() {
                 <InlineInput label="Name" value={emergency.name ?? ""} onChange={(v) => setEmergency({ ...emergency, name: v })} placeholder="Sam Morgan" />
                 <InlineInput label="Relationship" value={emergency.relationship ?? ""} onChange={(v) => setEmergency({ ...emergency, relationship: v })} placeholder="Partner" />
               </div>
-              <InlineInput label="Phone" value={emergency.phone ?? ""} onChange={(v) => setEmergency({ ...emergency, phone: v })} placeholder="+44 7700 900 123" type="tel" />
+              <InlineInput label="Phone" value={emergency.phone ?? ""} onChange={(v) => setEmergency({ ...emergency, phone: v })} placeholder="Phone number" type="tel" />
             </div>
           </Section>
 

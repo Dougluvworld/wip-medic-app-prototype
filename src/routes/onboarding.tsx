@@ -647,7 +647,7 @@ function StepContact({
             autoComplete="tel"
             inputMode="tel"
             maxLength={20}
-            placeholder="+44 7…"
+            placeholder="Phone number"
             className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm font-medium outline-none focus:border-primary"
           />
         </div>
