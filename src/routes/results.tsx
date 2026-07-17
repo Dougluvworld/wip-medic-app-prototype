@@ -390,29 +390,57 @@ function Results() {
                 Possible conditions
               </h3>
               <div className="space-y-2">
-                {list.map((c) => {
-                  const l = likelihood(c.confidence);
-                  return (
-                    <div key={c.name} className="rounded-2xl border border-border bg-card p-4 shadow-card">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold">{c.name}</p>
-                          {c.blurb && <p className="mt-0.5 text-xs text-muted-foreground">{c.blurb}</p>}
+                {(() => {
+                  const topScore = Math.max(1, ...list.map((c) => c.confidence));
+                  return list.map((c, i) => {
+                    const l = rankLabel(i);
+                    const pct = Math.max(8, Math.round((c.confidence / topScore) * 100));
+                    const barTone =
+                      i === 0 ? "bg-primary" : i === 1 ? "bg-primary/50" : "bg-muted-foreground/30";
+                    const cardTone =
+                      i === 0
+                        ? "border-primary/40 bg-card ring-1 ring-primary/20"
+                        : "border-border bg-card";
+                    const nameTone = i >= 2 ? "text-foreground/70" : "text-foreground";
+                    return (
+                      <div key={c.name} className={`rounded-2xl border p-4 shadow-card ${cardTone}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`text-sm font-semibold ${nameTone}`}>{c.name}</p>
+                            {c.blurb && (
+                              <p className="mt-0.5 text-xs text-muted-foreground">{c.blurb}</p>
+                            )}
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${l.tone}`}
+                          >
+                            {l.label}
+                          </span>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${l.tone}`}>
-                          {l.label}
-                        </span>
+                        <div
+                          className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                          role="presentation"
+                        >
+                          <div
+                            className={`h-full rounded-full transition-all ${barTone}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        {c.reasoning && (
+                          <p className="mt-2 text-xs italic leading-relaxed text-muted-foreground">
+                            {c.reasoning}
+                            <span className="not-italic text-muted-foreground/70">
+                              {" "}
+                              · {c.confidence}%
+                            </span>
+                          </p>
+                        )}
                       </div>
-                      {c.reasoning && (
-                        <p className="mt-3 text-xs italic leading-relaxed text-muted-foreground">
-                          {c.reasoning}
-                          <span className="not-italic text-muted-foreground/70"> · {c.confidence}% confidence</span>
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
+
             </div>
           )}
 
