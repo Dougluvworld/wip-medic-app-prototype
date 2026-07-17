@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Logo } from "@/components/ScreenHeader";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { hasOnboarded } from "@/lib/profile-store";
@@ -37,6 +38,7 @@ function Splash() {
           className={`relative flex flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] transition-opacity duration-200 ${redirecting ? "opacity-0" : "opacity-100"}`}
           aria-hidden={redirecting ? "true" : undefined}
         >
+          <ThemeToggle />
           <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[oklch(0.75_0.14_170)] opacity-40 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-[oklch(0.65_0.11_190)] opacity-30 blur-3xl" />
 

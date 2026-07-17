@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Stethoscope, MapPin, User, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 const leftItems = [
   { to: "/home", label: "Home", icon: Home },
@@ -13,10 +15,15 @@ const rightItems = [
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
   const isActive = (to: string) =>
     pathname === to || (to !== "/home" && pathname.startsWith(to));
 
-  return (
+  useEffect(() => {
+    setPortalTarget(document.querySelector("[data-bottom-nav-slot]"));
+  }, []);
+
+  const nav = (
     <nav className="absolute bottom-0 left-0 right-0 z-30 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <ul className="relative grid h-16 grid-cols-5 items-center px-2">
         {leftItems.map(({ to, label, icon: Icon }) => (
@@ -40,6 +47,8 @@ export function BottomNav() {
       </ul>
     </nav>
   );
+
+  return portalTarget ? createPortal(nav, portalTarget) : nav;
 }
 
 function NavItem({
