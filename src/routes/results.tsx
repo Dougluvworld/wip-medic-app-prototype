@@ -109,18 +109,25 @@ function matchConditions(mainSymptom: string | null, additional: string[]): Cond
 
 function Results() {
   const a = useAssessment();
-  const urgency = computeUrgency(a.severity, a.additional, a.mainSymptom);
-  const list = matchConditions(a.mainSymptom, a.additional);
   const travel = useTravelState();
   const emergency = getEmergencyInfo(
     travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
   );
-  const gpShort = careLabel(travel.mode);
   const gpLong = careLabel(travel.mode, "long");
   const gpBody =
     travel.mode === "away"
       ? `We recommend seeing a walk-in doctor or local clinic${travel.countryName ? ` in ${travel.countryName}` : ""} within 24–48 hours for a proper evaluation.`
       : "We recommend seeing your GP within 24–48 hours for a proper evaluation.";
+
+  // Prefer AI result; fall back to keyword matcher; red-flag always wins.
+  const ai = a.aiResult;
+  const urgency: "Low" | "Medium" | "High" = a.redFlag
+    ? "High"
+    : ai?.urgency ?? computeUrgency(a.severity, a.additional, a.mainSymptom);
+
+  const list: Array<{ name: string; confidence: number; blurb?: string; reasoning?: string }> =
+    ai?.conditions.map((c) => ({ name: c.name, confidence: c.confidence, reasoning: c.reasoning })) ??
+    matchConditions(a.mainSymptom, a.additional);
 
   const urgencyMap = {
     Low: {
@@ -145,13 +152,12 @@ function Results() {
       label: "High urgency",
       tone: "bg-destructive/15 text-destructive border-destructive/30",
       ring: "from-destructive/70 to-destructive/30",
-      next: "Seek urgent care now",
+      next: a.redFlag ? "Seek urgent care now" : ai?.recommendedAction ?? "Seek urgent care now",
       nextBody: `Go to an Emergency Department or urgent care clinic. If severe, call ${emergency.number} immediately.`,
       cta: "Show urgent care near me",
       careType: "Urgent Care" as const,
     },
   }[urgency];
-  void gpShort;
 
 
 
