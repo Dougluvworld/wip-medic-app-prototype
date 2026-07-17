@@ -1,5 +1,6 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { cn } from "@/lib/utils";
 
 /**
  * Floating top-right theme toggle for the first landing screen.
