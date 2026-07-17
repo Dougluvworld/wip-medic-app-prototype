@@ -115,7 +115,25 @@ function SettingsPage() {
 
         <div className="flex-1 space-y-6 px-5 py-5">
           <Group title="Preferences">
-            <ToggleRow icon={<Moon className="h-4 w-4" />} label="Dark mode" sub="Easier on the eyes at night" value={dark} onChange={setDark} />
+            <ToggleRow
+              icon={<Moon className="h-4 w-4" />}
+              label="Dark mode"
+              sub={choice === "system" ? "Following your system setting" : "Easier on the eyes at night"}
+              value={isDark}
+              onChange={(v) => setTheme(v ? "dark" : "light")}
+            />
+            {choice !== "system" && (
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <p className="text-xs text-muted-foreground">Currently overriding system theme</p>
+                <button
+                  type="button"
+                  onClick={() => setTheme("system")}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Follow system
+                </button>
+              </div>
+            )}
             <ToggleRow icon={<Bell className="h-4 w-4" />} label="Notifications" sub="Reminders & health tips" value={notifs} onChange={setNotifs} />
             <SoonRow icon={<Globe className="h-4 w-4" />} label="Language" value="English (UK)" />
           </Group>
