@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import type { AssessmentResult } from "./assessment.functions";
+import type { FollowUpAnswer } from "./follow-ups";
 
 type AssessmentState = {
   mainSymptom: string | null;
@@ -6,6 +8,10 @@ type AssessmentState = {
   duration: string | null;
   severity: number; // 1-10
   additional: string[];
+  followUpAnswers: FollowUpAnswer[];
+  redFlag: string | null;
+  aiResult: AssessmentResult | null;
+  aiError: string | null;
 };
 
 const initial: AssessmentState = {
@@ -14,6 +20,10 @@ const initial: AssessmentState = {
   duration: null,
   severity: 4,
   additional: [],
+  followUpAnswers: [],
+  redFlag: null,
+  aiResult: null,
+  aiError: null,
 };
 
 let state: AssessmentState = { ...initial };
@@ -25,6 +35,10 @@ export const assessmentStore = {
   get: () => state,
   set: (patch: Partial<AssessmentState>) => {
     state = { ...state, ...patch };
+    emit();
+  },
+  addFollowUp: (ans: FollowUpAnswer) => {
+    state = { ...state, followUpAnswers: [...state.followUpAnswers, ans] };
     emit();
   },
   toggleAdditional: (s: string) => {
