@@ -369,7 +369,18 @@ function Assess() {
             </div>
           )}
 
-          {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} />}
+          {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} picked={severityPicked} />}
+
+          {showThinking && (
+            <div className="animate-fade-in-up pt-2">
+              <button
+                onClick={cancelThinking}
+                className="mx-auto flex h-10 items-center justify-center rounded-full border border-border bg-card px-5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           {showAdditional && !typing && (
             <AdditionalPicker
