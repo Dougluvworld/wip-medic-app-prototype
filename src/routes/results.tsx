@@ -164,7 +164,8 @@ function Results() {
   const recommendation = recommendCareTypes(urgency, a.redFlag);
   useEffect(() => {
     assessmentStore.set({ careRecommendation: recommendation });
-  }, [recommendation.types.join("|"), recommendation.reason]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urgency, a.redFlag]);
 
 
 
