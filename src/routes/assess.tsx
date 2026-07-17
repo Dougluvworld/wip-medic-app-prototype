@@ -80,8 +80,11 @@ function Assess() {
     });
   };
 
-  // Kick off first prompt
+  // Kick off first prompt (guard against StrictMode double-invoke)
+  const bootedRef = useRef(false);
   useEffect(() => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
     void say("Hi 👋 I'm Medi. Tell me what's been bothering you — describe it in your own words.");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -91,10 +94,15 @@ function Assess() {
   }, [messages, typing, phase]);
 
   // Advance to a given phase and post its prompt
-  const advance = async (next: Phase) => {
+  const advance = async (next: Phase, ups: FollowUp[] = followUps) => {
     setPhase(next);
     if (next.kind === "followup") {
-      await say(followUps[next.idx].prompt);
+      const q = ups[next.idx];
+      if (!q) {
+        await advance({ kind: "duration" }, ups);
+        return;
+      }
+      await say(q.prompt);
     } else if (next.kind === "duration") {
       await say("How long has this been going on?");
     } else if (next.kind === "severity") {
@@ -160,7 +168,7 @@ function Assess() {
       const s = assessmentStore.get();
       const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
       setFollowUps(ups);
-      await advance({ kind: "followup", idx: 0 });
+      await advance({ kind: "followup", idx: 0 }, ups);
       return;
     }
 
