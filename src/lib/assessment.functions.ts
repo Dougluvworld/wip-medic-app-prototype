@@ -89,9 +89,9 @@ Return a JSON object with:
 Be specific to THIS person's answers. Do not give generic advice.`;
 
     try {
-      const { experimental_output: output } = await generateText({
+      const { output } = await generateText({
         model,
-        experimental_output: Output.object({ schema: resultSchema }),
+        output: Output.object({ schema: resultSchema }),
         prompt,
       });
 
@@ -100,7 +100,7 @@ Be specific to THIS person's answers. Do not give generic advice.`;
         urgencyReasons: output.urgencyReasons.slice(0, 3),
         conditions: output.conditions
           .slice(0, 4)
-          .map((c) => ({
+          .map((c: { name: string; confidence: number; reasoning: string }) => ({
             name: c.name,
             confidence: Math.max(10, Math.min(90, Math.round(c.confidence))),
             reasoning: c.reasoning,
