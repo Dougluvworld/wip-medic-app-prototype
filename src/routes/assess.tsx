@@ -475,26 +475,31 @@ function Assess() {
   );
 }
 
-function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
+function SeverityPicker({ onPick, picked }: { onPick: (n: number) => void; picked: number | null }) {
   return (
     <div className="pl-10">
       <div role="radiogroup" aria-label="Severity 1 to 10" className="grid grid-cols-10 gap-1.5">
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            onClick={() => onPick(n)}
-            role="radio"
-            aria-checked={false}
-            aria-label={`${n} out of 10`}
-            className={`h-11 rounded-lg text-sm font-semibold transition ${
-              n <= 3 ? "bg-success/15 text-success hover:bg-success/25" :
-              n <= 6 ? "bg-warning/20 text-warning-foreground hover:bg-warning/30" :
-              "bg-destructive/15 text-destructive hover:bg-destructive/25"
-            }`}
-          >
-            {n}
-          </button>
-        ))}
+        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
+          const isPicked = picked === n;
+          return (
+            <button
+              key={n}
+              onClick={() => onPick(n)}
+              role="radio"
+              aria-checked={isPicked}
+              aria-label={`${n} out of 10`}
+              className={`h-11 rounded-lg text-sm font-semibold transition ${
+                isPicked ? "ring-2 ring-primary ring-offset-1" : ""
+              } ${
+                n <= 3 ? "bg-success/15 text-success hover:bg-success/25" :
+                n <= 6 ? "bg-warning/20 text-warning-foreground hover:bg-warning/30" :
+                "bg-destructive/15 text-destructive hover:bg-destructive/25"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
       </div>
       <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
         <span>Mild</span><span>Moderate</span><span>Severe</span>
@@ -502,6 +507,7 @@ function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
     </div>
   );
 }
+
 
 function AdditionalPicker({ onDone, options = ADDITIONAL_CHIPS }: { onDone: (chips: string[]) => void; options?: string[] }) {
   const [picked, setPicked] = useState<string[]>([]);
