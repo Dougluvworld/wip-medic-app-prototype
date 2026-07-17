@@ -3,6 +3,7 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { loadProfile } from "@/lib/profile-store";
@@ -25,14 +26,14 @@ const urgencyColor = {
 } as const;
 
 function Home() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const travel = useTravelState();
   const emergency = getEmergencyInfo(
     travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
   );
 
-  // Read profile + history client-side to avoid SSR hydration mismatch.
+  // Everything here is client-only to avoid SSR/timezone mismatch on the
+  // greeting and to keep localStorage reads out of the render path.
+  const [greeting, setGreeting] = useState<string>("Hi");
   const [name, setName] = useState<string>("there");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [tip, setTip] = useState<string>("");
@@ -40,6 +41,8 @@ function Home() {
   const [ecPhone, setEcPhone] = useState<string>("");
 
   useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
     const profile = loadProfile();
     const first = (profile.name ?? "").trim().split(/\s+/)[0];
     setName(first || "there");
@@ -84,6 +87,8 @@ function Home() {
         <TravelBanner />
 
         <div className="flex-1 space-y-5 px-5 py-6">
+          <InstallPrompt />
+
           {/* Quick assessment CTA */}
           <Link
             to="/assess"

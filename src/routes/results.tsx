@@ -10,7 +10,7 @@ import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
 import { saveHistoryEntry } from "@/lib/history-store";
 import { loadProfile } from "@/lib/profile-store";
-import { AlertTriangle, Copy, Info, Phone, Sparkles } from "lucide-react";
+import { AlertTriangle, Copy, Info, Phone, Printer, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -215,6 +215,12 @@ function Results() {
     }
   };
 
+  const printSummary = () => {
+    if (typeof window === "undefined") return;
+    window.print();
+  };
+
+
   // Empty-state guard: user hit /results directly without running an assessment.
   const hasData = a.mainSymptom || a.aiResult || a.redFlag;
   if (!hasData) {
@@ -248,6 +254,7 @@ function Results() {
       <div className="flex min-h-full flex-col">
         <ScreenHeader
           title="AI assessment"
+          subtitle="Guidance, not diagnosis"
           back="auto"
           backFallback="/home"
           right={
@@ -375,12 +382,20 @@ function Results() {
             >
               {urgencyMap.cta}
             </Link>
-            <button
-              onClick={copySummary}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
-            >
-              <Copy className="h-4 w-4" /> Copy summary
-            </button>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                onClick={copySummary}
+                className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
+              >
+                <Copy className="h-4 w-4" /> Copy
+              </button>
+              <button
+                onClick={printSummary}
+                className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-accent"
+              >
+                <Printer className="h-4 w-4" /> Save as PDF
+              </button>
+            </div>
           </div>
 
           {/* Possible conditions — qualitative framing */}

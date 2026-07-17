@@ -9,30 +9,34 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Medi-Care — Assess. Navigate. Care." },
       { name: "description", content: "AI-powered healthcare navigation. Understand your symptoms and find the right care nearby, in minutes." },
+      { property: "og:title", content: "Medi-Care — Assess. Navigate. Care." },
+      { property: "og:description", content: "AI-powered healthcare navigation. Understand your symptoms and find the right care nearby, in minutes." },
+      { property: "og:url", content: "/" },
     ],
+    links: [{ rel: "canonical", href: "/" }],
   }),
   component: Splash,
 });
 
 function Splash() {
   const nav = useNavigate();
-  const [ready, setReady] = useState(false);
-
+  // Redirect returning users after first paint — but render the splash markup
+  // immediately so first-time users don't see a blank frame.
+  const [redirecting, setRedirecting] = useState(false);
   useEffect(() => {
-    // Returning users skip the splash.
     if (hasOnboarded()) {
+      setRedirecting(true);
       nav({ to: "/home", replace: true });
-      return;
     }
-    setReady(true);
   }, [nav]);
 
-  if (!ready) return null;
-
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[oklch(0.96_0.02_180)] via-background to-[oklch(0.94_0.04_170)] md:py-10">
-      <div className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col overflow-hidden bg-background md:min-h-[900px] md:max-h-[900px] md:rounded-[44px] md:border md:border-border md:shadow-float">
-        <div className="relative flex flex-1 flex-col overflow-hidden">
+    <div className="min-h-dvh w-full bg-gradient-to-br from-[oklch(0.96_0.02_180)] via-background to-[oklch(0.94_0.04_170)] md:py-10">
+      <div className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-background md:min-h-[900px] md:max-h-[900px] md:rounded-[44px] md:border md:border-border md:shadow-float">
+        <div
+          className={`relative flex flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] transition-opacity duration-200 ${redirecting ? "opacity-0" : "opacity-100"}`}
+          aria-hidden={redirecting ? "true" : undefined}
+        >
           <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[oklch(0.75_0.14_170)] opacity-40 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-[oklch(0.65_0.11_190)] opacity-30 blur-3xl" />
 

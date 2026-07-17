@@ -190,3 +190,13 @@
 @utility animate-pulse-ring {
   animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Print styles for /results — clean PDF handout for GP visits. */
+@media print {
+  @page { margin: 16mm; }
+  html, body { background: #fff !important; }
+  nav, header button, [aria-hidden="true"], .no-print { display: none !important; }
+  /* Flatten the phone frame chrome so content fills the page */
+  body * { box-shadow: none !important; }
+  .gradient-primary { background: #0B7A75 !important; color: #fff !important; }
+}

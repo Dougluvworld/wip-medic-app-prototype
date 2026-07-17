@@ -84,8 +84,10 @@ function Assess() {
   const [typing, setTyping] = useState(true);
   const [phase, setPhase] = useState<Phase>({ kind: "main" });
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [severityPicked, setSeverityPicked] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const canceledRef = useRef(false);
 
   useEffect(() => { assessmentStore.reset(); }, []);
 
@@ -100,6 +102,7 @@ function Assess() {
       }, 450);
     });
   };
+
 
   const bootedRef = useRef(false);
   useEffect(() => {
@@ -152,6 +155,7 @@ function Assess() {
 
   const finish = async () => {
     setPhase({ kind: "thinking" });
+    canceledRef.current = false;
     const s = assessmentStore.get();
 
     const redFlag = detectRedFlag({
@@ -171,10 +175,12 @@ function Assess() {
 
     try {
       const result = await runAi();
+      if (canceledRef.current) return;
       assessmentStore.set({ aiResult: result, aiError: null });
       await say(`Got it. Top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
       setPhase({ kind: "done" });
     } catch (err) {
+      if (canceledRef.current) return;
       const msg = err instanceof Error ? err.message : "Assessment failed";
       assessmentStore.set({ aiError: msg });
       await say("I couldn't finish reasoning about this. You can retry, or continue with a basic assessment.");
@@ -182,20 +188,50 @@ function Assess() {
     }
   };
 
+  const cancelThinking = async () => {
+    canceledRef.current = true;
+    assessmentStore.set({ aiError: "Canceled" });
+    await say("Cancelled. You can retry or continue with the basic assessment.");
+    setPhase({ kind: "error" });
+  };
+
   const retryAi = async () => {
     setPhase({ kind: "thinking" });
+    canceledRef.current = false;
     await say("Trying again…");
     try {
       const result = await runAi();
+      if (canceledRef.current) return;
       assessmentStore.set({ aiResult: result, aiError: null });
       await say(`Got it. Top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
       setPhase({ kind: "done" });
     } catch (err) {
+      if (canceledRef.current) return;
       const msg = err instanceof Error ? err.message : "Assessment failed";
       assessmentStore.set({ aiError: msg });
       await say("Still no luck. Continue with the basic assessment or try later.");
       setPhase({ kind: "error" });
     }
+  };
+
+
+  // Escalate immediately if any user message already trips a red-flag rule —
+  // don't make someone with crushing chest pain wait for 5 more questions.
+  const checkAndEscalate = async (): Promise<boolean> => {
+    const s = assessmentStore.get();
+    const redFlag = detectRedFlag({
+      mainSymptom: s.mainSymptom,
+      severity: s.severity,
+      additional: s.additional,
+      answers: s.followUpAnswers,
+    });
+    if (!redFlag) return false;
+    assessmentStore.set({ redFlag });
+    await say(
+      "That sounds serious — I'm flagging this as urgent based on what you just told me. Let me show you what to do next.",
+    );
+    setPhase({ kind: "done" });
+    return true;
   };
 
   const handleFreeText = async (raw: string) => {
@@ -210,6 +246,7 @@ function Assess() {
         bodyArea: detectBodyArea(text),
       });
       assessmentStore.addRawText(text);
+      if (await checkAndEscalate()) return;
       const s = assessmentStore.get();
       const ups = pickFollowUps(s.mainSymptom, s.bodyArea);
       setFollowUps(ups);
@@ -220,6 +257,7 @@ function Assess() {
     if (phase.kind === "followup") {
       const q = followUps[phase.idx];
       assessmentStore.addFollowUp({ id: q.id, prompt: q.prompt, answer: text });
+      if (await checkAndEscalate()) return;
       const nextIdx = phase.idx + 1;
       if (nextIdx < followUps.length) await advance({ kind: "followup", idx: nextIdx });
       else await advance({ kind: "duration" });
@@ -234,10 +272,16 @@ function Assess() {
   };
 
   const handleSeverity = async (n: number) => {
+    setSeverityPicked(n);
     assessmentStore.set({ severity: n });
     setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text: `${n}/10` }]);
+    if (n >= 9) {
+      // severity 9-10 is itself a red flag — escalate now.
+      if (await checkAndEscalate()) return;
+    }
     await advance({ kind: "additional" });
   };
+
 
   const handleAdditional = async (chips: string[]) => {
     const list = chips.filter((c) => c !== "None");
@@ -325,7 +369,18 @@ function Assess() {
             </div>
           )}
 
-          {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} />}
+          {showSeverity && !typing && <SeverityPicker onPick={handleSeverity} picked={severityPicked} />}
+
+          {showThinking && (
+            <div className="animate-fade-in-up pt-2">
+              <button
+                onClick={cancelThinking}
+                className="mx-auto flex h-10 items-center justify-center rounded-full border border-border bg-card px-5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           {showAdditional && !typing && (
             <AdditionalPicker
@@ -420,26 +475,31 @@ function Assess() {
   );
 }
 
-function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
+function SeverityPicker({ onPick, picked }: { onPick: (n: number) => void; picked: number | null }) {
   return (
     <div className="pl-10">
       <div role="radiogroup" aria-label="Severity 1 to 10" className="grid grid-cols-10 gap-1.5">
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            onClick={() => onPick(n)}
-            role="radio"
-            aria-checked={false}
-            aria-label={`${n} out of 10`}
-            className={`h-11 rounded-lg text-sm font-semibold transition ${
-              n <= 3 ? "bg-success/15 text-success hover:bg-success/25" :
-              n <= 6 ? "bg-warning/20 text-warning-foreground hover:bg-warning/30" :
-              "bg-destructive/15 text-destructive hover:bg-destructive/25"
-            }`}
-          >
-            {n}
-          </button>
-        ))}
+        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
+          const isPicked = picked === n;
+          return (
+            <button
+              key={n}
+              onClick={() => onPick(n)}
+              role="radio"
+              aria-checked={isPicked}
+              aria-label={`${n} out of 10`}
+              className={`h-11 rounded-lg text-sm font-semibold transition ${
+                isPicked ? "ring-2 ring-primary ring-offset-1" : ""
+              } ${
+                n <= 3 ? "bg-success/15 text-success hover:bg-success/25" :
+                n <= 6 ? "bg-warning/20 text-warning-foreground hover:bg-warning/30" :
+                "bg-destructive/15 text-destructive hover:bg-destructive/25"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
       </div>
       <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
         <span>Mild</span><span>Moderate</span><span>Severe</span>
@@ -447,6 +507,7 @@ function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
     </div>
   );
 }
+
 
 function AdditionalPicker({ onDone, options = ADDITIONAL_CHIPS }: { onDone: (chips: string[]) => void; options?: string[] }) {
   const [picked, setPicked] = useState<string[]>([]);
