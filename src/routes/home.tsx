@@ -3,12 +3,13 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { BottomNav } from "@/components/BottomNav";
 import { Logo } from "@/components/ScreenHeader";
 import { TravelBanner } from "@/components/TravelBanner";
-import { recentAssessments } from "@/lib/mock-data";
 import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
-import { Settings, AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList } from "lucide-react";
-
-
+import { loadProfile } from "@/lib/profile-store";
+import { loadHistory, formatRelative, type HistoryEntry } from "@/lib/history-store";
+import { dailyTip } from "@/lib/tips";
+import { AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -31,8 +32,18 @@ function Home() {
     travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
   );
 
+  // Read profile + history client-side to avoid SSR hydration mismatch.
+  const [name, setName] = useState<string>("there");
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [tip, setTip] = useState<string>("");
 
-
+  useEffect(() => {
+    const profile = loadProfile();
+    const first = (profile.name ?? "").trim().split(/\s+/)[0];
+    setName(first || "there");
+    setHistory(loadHistory());
+    setTip(dailyTip(profile));
+  }, []);
 
   return (
     <PhoneFrame>
@@ -43,38 +54,23 @@ function Home() {
             <Logo size={44} />
             <div>
               <p className="text-xs font-medium text-muted-foreground">{greeting},</p>
-              <p className="text-base font-semibold">Alex</p>
+              <p className="text-base font-semibold">{name}</p>
             </div>
           </div>
-          <Link to="/settings" className="grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent">
-            <Settings className="h-5 w-5" />
-          </Link>
+          {/* Compact emergency call pill — high-visibility, low real estate */}
+          <a
+            href={`tel:${emergency.number}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
+            aria-label={`Call emergency number ${emergency.number}`}
+          >
+            <Phone className="h-3.5 w-3.5" />
+            SOS {emergency.number}
+          </a>
         </header>
 
         <TravelBanner />
 
         <div className="flex-1 space-y-5 px-5 py-6">
-
-          {/* Emergency banner */}
-          <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 animate-fade-in">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-destructive">Life-threatening emergency?</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Call {emergency.number} immediately for chest pain, severe bleeding, or breathing difficulty.
-              </p>
-            </div>
-            <a
-              href={`tel:${emergency.number}`}
-              className="shrink-0 rounded-full bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground shadow-soft"
-            >
-              Call {emergency.number}
-            </a>
-          </div>
-
-
           {/* Quick assessment CTA */}
           <Link
             to="/assess"
@@ -124,41 +120,50 @@ function Home() {
             </Link>
           </div>
 
-          {/* Recent assessments */}
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Recent assessments</h3>
-              <button className="text-xs font-medium text-primary">See all</button>
+          {/* Recent assessments (real history) */}
+          {history.length > 0 ? (
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Recent assessments</h3>
+              <div className="space-y-2">
+                {history.slice(0, 3).map((a) => (
+                  <Link
+                    key={a.id}
+                    to="/results"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{a.mainSymptom}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatRelative(a.date)} · {a.action}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${urgencyColor[a.urgency]}`}>
+                      {a.urgency}
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Link>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              {recentAssessments.map((a) => (
-                <Link
-                  key={a.id}
-                  to="/results"
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{a.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {a.date} · {a.action}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${urgencyColor[a.urgency]}`}>
-                    {a.urgency}
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Link>
-              ))}
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-card/40 p-5 text-center">
+              <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-accent text-primary">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-sm font-semibold">No past check-ins yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your recent AI assessments will show up here for easy reference.
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* Health tip */}
-          <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-accent to-background p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Daily tip</p>
-            <p className="mt-1 text-sm leading-relaxed text-foreground">
-              Aim for 7–9 hours of sleep. Poor sleep weakens your immune response and increases stress.
-            </p>
-          </div>
+          {/* Daily tip */}
+          {tip && (
+            <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-accent to-background p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Daily tip</p>
+              <p className="mt-1 text-sm leading-relaxed text-foreground">{tip}</p>
+            </div>
+          )}
         </div>
 
         <BottomNav />

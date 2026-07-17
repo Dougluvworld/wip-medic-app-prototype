@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Logo } from "@/components/ScreenHeader";
 import { ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { hasOnboarded } from "@/lib/profile-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -13,11 +15,24 @@ export const Route = createFileRoute("/")({
 });
 
 function Splash() {
+  const nav = useNavigate();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Returning users skip the splash.
+    if (hasOnboarded()) {
+      nav({ to: "/home", replace: true });
+      return;
+    }
+    setReady(true);
+  }, [nav]);
+
+  if (!ready) return null;
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[oklch(0.96_0.02_180)] via-background to-[oklch(0.94_0.04_170)] md:py-10">
       <div className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col overflow-hidden bg-background md:min-h-[900px] md:max-h-[900px] md:rounded-[44px] md:border md:border-border md:shadow-float">
         <div className="relative flex flex-1 flex-col overflow-hidden">
-          {/* Decorative gradient orbs */}
           <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[oklch(0.75_0.14_170)] opacity-40 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-[oklch(0.65_0.11_190)] opacity-30 blur-3xl" />
 
@@ -55,19 +70,13 @@ function Splash() {
               to="/onboarding"
               className="flex h-14 w-full items-center justify-center rounded-2xl gradient-primary text-base font-semibold text-primary-foreground shadow-soft transition-transform active:scale-[0.98]"
             >
-              Create Account
-            </Link>
-            <Link
-              to="/home"
-              className="flex h-14 w-full items-center justify-center rounded-2xl border border-border bg-card text-base font-semibold text-foreground transition-colors hover:bg-muted"
-            >
-              Sign In
+              Get started
             </Link>
             <Link
               to="/home"
               className="flex h-11 w-full items-center justify-center text-sm font-medium text-muted-foreground hover:text-primary"
             >
-              Continue as Guest →
+              Continue as guest →
             </Link>
           </div>
         </div>
