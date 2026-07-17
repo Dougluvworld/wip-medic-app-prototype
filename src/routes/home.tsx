@@ -69,7 +69,7 @@ function Home() {
     <PhoneFrame>
       <div className="flex min-h-full flex-col">
         {/* Header */}
-        <header className="relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+18px)]">
+        <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 pt-[calc(env(safe-area-inset-top)+18px)]">
           <div className="flex items-center gap-3">
             <Logo size={44} />
             <div>
@@ -77,11 +77,11 @@ function Home() {
               <p className="text-base font-semibold">{name}</p>
             </div>
           </div>
-          <InlineThemeToggle className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+          <InlineThemeToggle className="justify-self-center" />
           {/* Compact emergency call pill — dials the user's saved contact when available */}
           <a
             href={sosHref}
-            className="inline-flex max-w-[45%] items-center gap-1.5 truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
+            className="inline-flex max-w-[80%] items-center gap-1.5 justify-self-end truncate rounded-full border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive"
             aria-label={sosAria}
           >
             <Phone className="h-3.5 w-3.5 shrink-0" />
