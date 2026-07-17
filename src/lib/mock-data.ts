@@ -21,6 +21,8 @@ export type Provider = {
   openNow: boolean;
   address: string;
   phone: string;
+  lat?: number;
+  lng?: number;
   badges?: string[];
   reviewList?: Review[];
   ratingBreakdown?: RatingBreakdown;
