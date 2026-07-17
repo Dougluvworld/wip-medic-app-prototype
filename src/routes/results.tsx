@@ -10,7 +10,7 @@ import { careLabel } from "@/lib/care-labels";
 import { recommendCareTypes } from "@/lib/care-recommendation";
 import { saveHistoryEntry } from "@/lib/history-store";
 import { loadProfile } from "@/lib/profile-store";
-import { AlertTriangle, Copy, Info, Phone, Printer, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, Copy, HeartPulse, Info, Phone, Printer, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -310,11 +310,11 @@ function Results() {
           {/* Urgency hero */}
           <div className={`relative overflow-hidden rounded-3xl border p-5 shadow-card animate-scale-in ${urgencyMap.tone}`}>
             <div className={`pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br ${urgencyMap.ring} opacity-40 blur-3xl`} />
-            <p className="text-xs font-semibold uppercase tracking-widest opacity-80">Urgency level</p>
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-80">Recommended urgency</p>
             <h2 className="mt-1 font-display text-3xl font-semibold">{urgencyMap.label}</h2>
             <p className="mt-2 text-sm opacity-90">
-              Based on {a.mainSymptom || "your symptom"}, severity {a.severity}/10
-              {a.additional.length ? ` and ${a.additional.length} related symptoms` : ""}.
+              Based on the information you provided about {a.mainSymptom || "your symptom"} (severity {a.severity}/10
+              {a.additional.length ? `, plus ${a.additional.length} related symptom${a.additional.length > 1 ? "s" : ""}` : ""}).
             </p>
           </div>
 
