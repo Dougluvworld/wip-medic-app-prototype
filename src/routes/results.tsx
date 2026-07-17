@@ -318,31 +318,60 @@ function Results() {
             </p>
           </div>
 
-          {/* Red-flag banner */}
+          {/* Full-width emergency experience */}
           {a.redFlag && (
-            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-destructive">Possible emergency</p>
-                  <p className="mt-1 text-xs text-foreground/80">{a.redFlag}</p>
+            <div className="relative overflow-hidden rounded-3xl border-2 border-destructive bg-destructive/10 p-5 shadow-float animate-scale-in">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-destructive/40 blur-3xl" />
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl" aria-hidden>🚨</span>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-destructive">
+                    Emergency care recommended
+                  </p>
                 </div>
-              </div>
-              <a
-                href={`tel:${emergency.number}`}
-                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-sm font-semibold text-destructive-foreground shadow-soft"
-              >
-                <Phone className="h-4 w-4" /> Call {emergency.number} now
-              </a>
-              {hasEc && (
+                <h3 className="mt-1 font-display text-2xl font-semibold text-destructive">
+                  This may require immediate medical attention
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+                  This assessment has identified symptoms that may require immediate medical attention.
+                  If you believe you are experiencing a medical emergency, contact your local emergency
+                  services immediately.
+                </p>
+                <div className="mt-3 rounded-2xl border border-destructive/30 bg-card p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-destructive">Why</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground/80">{a.redFlag}</p>
+                </div>
+
                 <a
-                  href={`tel:${ec.phone}`}
-                  className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/40 bg-card text-sm font-semibold text-destructive hover:bg-destructive/5"
-                  aria-label={`Call emergency contact ${ec.name || ec.phone}`}
+                  href={`tel:${emergency.number}`}
+                  className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-base font-semibold text-destructive-foreground shadow-soft active:scale-[0.98]"
                 >
-                  <Phone className="h-4 w-4" /> Call {ec.name || "emergency contact"}
+                  <Phone className="h-5 w-5" /> Call {emergency.number} now
                 </a>
-              )}
+                {hasEc && (
+                  <a
+                    href={`tel:${ec.phone}`}
+                    className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/40 bg-card text-sm font-semibold text-destructive hover:bg-destructive/5"
+                    aria-label={`Call emergency contact ${ec.name || ec.phone}`}
+                  >
+                    <Phone className="h-4 w-4" /> Call {ec.name || "emergency contact"}
+                  </a>
+                )}
+                <Link
+                  to="/care"
+                  search={{ type: "Hospital" as const }}
+                  className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-card text-sm font-semibold text-foreground shadow-card"
+                >
+                  <HeartPulse className="h-4 w-4" /> Find nearest emergency department
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => toast("First aid guidance is coming soon in a future release.")}
+                  className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-card text-sm font-semibold text-foreground shadow-card"
+                >
+                  <Info className="h-4 w-4" /> View first aid advice
+                </button>
+              </div>
             </div>
           )}
 
