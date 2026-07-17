@@ -155,6 +155,7 @@ function Assess() {
 
   const finish = async () => {
     setPhase({ kind: "thinking" });
+    canceledRef.current = false;
     const s = assessmentStore.get();
 
     const redFlag = detectRedFlag({
@@ -174,10 +175,12 @@ function Assess() {
 
     try {
       const result = await runAi();
+      if (canceledRef.current) return;
       assessmentStore.set({ aiResult: result, aiError: null });
       await say(`Got it. Top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
       setPhase({ kind: "done" });
     } catch (err) {
+      if (canceledRef.current) return;
       const msg = err instanceof Error ? err.message : "Assessment failed";
       assessmentStore.set({ aiError: msg });
       await say("I couldn't finish reasoning about this. You can retry, or continue with a basic assessment.");
@@ -185,21 +188,32 @@ function Assess() {
     }
   };
 
+  const cancelThinking = async () => {
+    canceledRef.current = true;
+    assessmentStore.set({ aiError: "Canceled" });
+    await say("Cancelled. You can retry or continue with the basic assessment.");
+    setPhase({ kind: "error" });
+  };
+
   const retryAi = async () => {
     setPhase({ kind: "thinking" });
+    canceledRef.current = false;
     await say("Trying again…");
     try {
       const result = await runAi();
+      if (canceledRef.current) return;
       assessmentStore.set({ aiResult: result, aiError: null });
       await say(`Got it. Top possibility: ${result.conditions[0]?.name ?? "see results"}.`);
       setPhase({ kind: "done" });
     } catch (err) {
+      if (canceledRef.current) return;
       const msg = err instanceof Error ? err.message : "Assessment failed";
       assessmentStore.set({ aiError: msg });
       await say("Still no luck. Continue with the basic assessment or try later.");
       setPhase({ kind: "error" });
     }
   };
+
 
   const handleFreeText = async (raw: string) => {
     const text = raw.trim();
