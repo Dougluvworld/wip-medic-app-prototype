@@ -413,7 +413,7 @@ function SeverityPicker({ onPick }: { onPick: (n: number) => void }) {
   );
 }
 
-function AdditionalPicker({ onDone }: { onDone: (chips: string[]) => void }) {
+function AdditionalPicker({ onDone, options = ADDITIONAL_CHIPS }: { onDone: (chips: string[]) => void; options?: string[] }) {
   const [picked, setPicked] = useState<string[]>([]);
   const toggle = (c: string) => {
     if (c === "None") { setPicked(["None"]); return; }
@@ -425,7 +425,7 @@ function AdditionalPicker({ onDone }: { onDone: (chips: string[]) => void }) {
   return (
     <div className="pl-10">
       <div className="flex flex-wrap gap-2">
-        {ADDITIONAL_CHIPS.map((c) => {
+        {options.map((c) => {
           const on = picked.includes(c);
           return (
             <button
