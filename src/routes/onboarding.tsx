@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import {
   ArrowRight,
@@ -331,6 +332,68 @@ function StepVitals({
   setAllergies: (v: string[]) => void;
 }) {
   const [custom, setCustom] = useState("");
+  const [day, setDay] = useState("");
+  const [month, setMonth] = useState("");
+  const [year, setYear] = useState("");
+  const [dobError, setDobError] = useState<string | null>(null);
+  const dayRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
+
+  // Hydrate split fields from the stored ISO date (YYYY-MM-DD).
+  useEffect(() => {
+    if (!dob || dob.length !== 10) return;
+    const [y, m, d] = dob.split("-");
+    setYear(y ?? "");
+    setMonth(m ?? "");
+    setDay(d ?? "");
+  }, []);
+
+  const updateDob = (nextDay: string, nextMonth: string, nextYear: string) => {
+    setDobError(null);
+    if (!nextDay && !nextMonth && !nextYear) {
+      setDob("");
+      return;
+    }
+    const d = nextDay.padStart(2, "0");
+    const m = nextMonth.padStart(2, "0");
+    const y = nextYear;
+    if (nextDay && nextMonth && nextYear.length === 4) {
+      const iso = `${y}-${m}-${d}`;
+      const parsed = new Date(iso);
+      const valid =
+        parsed.getFullYear() === Number(y) &&
+        parsed.getMonth() + 1 === Number(m) &&
+        parsed.getDate() === Number(d);
+      const future = parsed > new Date();
+      if (!valid || future) {
+        setDobError("Please enter a valid date of birth");
+        setDob("");
+        return;
+      }
+      setDob(iso);
+    }
+  };
+
+  const handleDay = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 2);
+    setDay(digits);
+    if (digits.length === 2 && monthRef.current) monthRef.current.focus();
+    updateDob(digits, month, year);
+  };
+
+  const handleMonth = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 2);
+    setMonth(digits);
+    if (digits.length === 2 && yearRef.current) yearRef.current.focus();
+    updateDob(day, digits, year);
+  };
+
+  const handleYear = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 4);
+    setYear(digits);
+    updateDob(day, month, digits);
+  };
 
   const toggle = (a: string) => {
     if (a === "None") {
@@ -353,8 +416,6 @@ function StepVitals({
     setCustom("");
   };
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
   return (
     <div className="flex flex-1 flex-col justify-start pt-6">
       <div className="mb-6 grid h-16 w-16 place-items-center rounded-2xl gradient-primary text-primary-foreground shadow-float">
@@ -368,19 +429,66 @@ function StepVitals({
       </p>
 
       <div className="mt-5 space-y-5">
-        {/* DOB */}
+        {/* DOB — split into day / month / year for easier mobile entry */}
         <div>
-          <label htmlFor="dob" className="mb-1.5 block text-xs font-semibold text-foreground">
-            Date of birth
-          </label>
-          <input
-            id="dob"
-            type="date"
-            value={dob}
-            max={today}
-            onChange={(e) => setDob(e.target.value)}
-            className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm font-medium outline-none focus:border-primary"
-          />
+          <p className="mb-1.5 text-xs font-semibold text-foreground">Date of birth</p>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label htmlFor="dob-day" className="mb-1 block text-[10px] font-medium text-muted-foreground">
+                Day
+              </label>
+              <input
+                ref={dayRef}
+                id="dob-day"
+                inputMode="numeric"
+                placeholder="DD"
+                value={day}
+                maxLength={2}
+                onChange={(e) => handleDay(e.target.value)}
+                className={cn(
+                  "h-12 w-full rounded-xl border bg-card px-3 text-center text-base font-semibold outline-none focus:border-primary",
+                  dobError ? "border-destructive focus:border-destructive" : "border-border",
+                )}
+              />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="dob-month" className="mb-1 block text-[10px] font-medium text-muted-foreground">
+                Month
+              </label>
+              <input
+                ref={monthRef}
+                id="dob-month"
+                inputMode="numeric"
+                placeholder="MM"
+                value={month}
+                maxLength={2}
+                onChange={(e) => handleMonth(e.target.value)}
+                className={cn(
+                  "h-12 w-full rounded-xl border bg-card px-3 text-center text-base font-semibold outline-none focus:border-primary",
+                  dobError ? "border-destructive focus:border-destructive" : "border-border",
+                )}
+              />
+            </div>
+            <div className="flex-[1.35]">
+              <label htmlFor="dob-year" className="mb-1 block text-[10px] font-medium text-muted-foreground">
+                Year
+              </label>
+              <input
+                ref={yearRef}
+                id="dob-year"
+                inputMode="numeric"
+                placeholder="YYYY"
+                value={year}
+                maxLength={4}
+                onChange={(e) => handleYear(e.target.value)}
+                className={cn(
+                  "h-12 w-full rounded-xl border bg-card px-3 text-center text-base font-semibold outline-none focus:border-primary",
+                  dobError ? "border-destructive focus:border-destructive" : "border-border",
+                )}
+              />
+            </div>
+          </div>
+          {dobError && <p className="mt-1.5 text-[11px] text-destructive">{dobError}</p>}
         </div>
 
         {/* Sex */}
