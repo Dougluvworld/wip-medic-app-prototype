@@ -8,6 +8,7 @@ import { getEmergencyInfo } from "@/lib/locale";
 import { useTravelState } from "@/lib/travel-mode";
 import { loadProfile } from "@/lib/profile-store";
 import { loadHistory, formatRelative, type HistoryEntry } from "@/lib/history-store";
+import { useAssessment } from "@/lib/assessment-store";
 import { dailyTip } from "@/lib/tips";
 import { AlertTriangle, Stethoscope, ChevronRight, UserCircle2, ClipboardList, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
