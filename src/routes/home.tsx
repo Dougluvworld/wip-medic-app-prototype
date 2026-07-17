@@ -28,6 +28,8 @@ const urgencyColor = {
 
 function Home() {
   const travel = useTravelState();
+  const assessment = useAssessment();
+  const hasCareRecommendation = assessment.careRecommendation != null;
   const emergency = getEmergencyInfo(
     travel.mode === "away" && travel.currentCountry ? travel.currentCountry : travel.homeCountry,
   );
